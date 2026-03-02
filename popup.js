@@ -20,7 +20,7 @@ const sendBtn = document.getElementById('sendBtn');
 // ===================== INIT =====================
 document.addEventListener('DOMContentLoaded', async () => {
   // Load saved API key & model
-  const data = await chrome.storage.local.get(['geminiApiKey', 'geminiModel', 'xolverShortAnswer', 'xolverFreeApi', 'xolverLastSelected']);
+  const data = await chrome.storage.local.get(['geminiApiKey', 'geminiModel', 'xolverShortAnswer', 'xolverFreeApi', 'xolverAutoModelSwitch', 'xolverLastSelected']);
   if (data.geminiApiKey) {
     apiKeyInput.value = data.geminiApiKey;
   }
@@ -28,8 +28,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     modelSelect.value = data.geminiModel;
   }
   document.getElementById('shortAnswerToggle').checked = !!data.xolverShortAnswer;
-  // Free API mode defaults to true if not set
   document.getElementById('freeApiToggle').checked = data.xolverFreeApi !== false;
+  document.getElementById('autoModelToggle').checked = !!data.xolverAutoModelSwitch;
 
   // Restore last selected element preview
   if (data.xolverLastSelected) {
@@ -104,6 +104,10 @@ document.getElementById('shortAnswerToggle').addEventListener('change', async (e
 
 document.getElementById('freeApiToggle').addEventListener('change', async (e) => {
   await chrome.storage.local.set({ xolverFreeApi: e.target.checked });
+});
+
+document.getElementById('autoModelToggle').addEventListener('change', async (e) => {
+  await chrome.storage.local.set({ xolverAutoModelSwitch: e.target.checked });
 });
 
 // ===================== CLEAR CHAT =====================

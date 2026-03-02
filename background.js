@@ -235,12 +235,17 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 // ===================== AUTO-SOLVE SEQUENTIAL QUEUE =====================
 const MAX_RETRIES = 2;
 const MAX_RETRY_WAIT = 20000;
+const FALLBACK_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-3.0-flash', 'gemini-3.0-pro', 'gemini-3.1-pro'];
 let autoSolveCancelled = false;
 
 async function processAutoSolveQueue(questions, totalQuestions, tabId) {
-  const data = await chrome.storage.local.get(['geminiApiKey', 'geminiModel']);
+  const data = await chrome.storage.local.get(['geminiApiKey', 'geminiModel', 'xolverAutoModelSwitch']);
   const apiKey = data.geminiApiKey;
-  const model = data.geminiModel || 'gemini-2.5-flash';
+  const baseModel = data.geminiModel || 'gemini-2.5-flash';
+  const autoModelSwitch = !!data.xolverAutoModelSwitch;
+  const startIdx = FALLBACK_MODELS.indexOf(baseModel);
+  let currentModel = baseModel;
+  let currentFallbacks = autoModelSwitch && startIdx !== -1 ? FALLBACK_MODELS.slice(startIdx + 1) : [];
 
   if (!apiKey) {
     console.log('[Xolver BG] No API key!');
@@ -266,8 +271,11 @@ async function processAutoSolveQueue(questions, totalQuestions, tabId) {
     const q = questions[i];
     console.log('[Xolver BG] Processing question', q.questionIndex + 1, '/', totalQuestions);
 
-    const success = await solveOneQuestion(q.html, q.questionIndex, tabId, apiKey, model);
-    if (success) {
+    const result = await solveOneQuestion(q.html, q.questionIndex, tabId, apiKey, currentModel, currentFallbacks);
+    currentModel = result.finalModel;
+    const newIdx = FALLBACK_MODELS.indexOf(currentModel);
+    currentFallbacks = autoModelSwitch && newIdx !== -1 ? FALLBACK_MODELS.slice(newIdx + 1) : [];
+    if (result.success) {
       solvedCount++;
     } else {
       failedCount++;
@@ -310,12 +318,12 @@ async function processAutoSolveQueue(questions, totalQuestions, tabId) {
   focusXolverWindow();
 }
 
-async function solveOneQuestion(html, questionIndex, tabId, apiKey, model) {
+async function solveOneQuestion(html, questionIndex, tabId, apiKey, model, fallbackModels = []) {
   const apiMsg = `Bu HTML bir sınav/test sorusudur. Doğru cevabın şıkkını (harfini) söyle:\n\n\`\`\`html\n${html}\n\`\`\``;
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     // Check cancellation before each attempt
-    if (autoSolveCancelled) return false;
+    if (autoSolveCancelled) return { success: false, finalModel: model };
 
     try {
       // 30 second timeout for each fetch
@@ -344,6 +352,17 @@ async function solveOneQuestion(html, questionIndex, tabId, apiKey, model) {
         const errBody = await response.text();
         console.warn('[Xolver BG] Rate limited on question', questionIndex + 1, 'attempt', attempt + 1);
 
+        // Auto model switch: try next model immediately without waiting
+        if (fallbackModels.length > 0) {
+          const nextModel = fallbackModels[0];
+          const remaining = fallbackModels.slice(1);
+          const switchMsgs = await getChatMessages();
+          switchMsgs.push({ role: 'system', text: `🔄 Soru ${questionIndex + 1}: ${model} kota doldu, ${nextModel} deneniyor...` });
+          await saveChatMessages(switchMsgs);
+          chrome.runtime.sendMessage({ action: 'chatUpdated', loading: true }).catch(() => {});
+          return solveOneQuestion(html, questionIndex, tabId, apiKey, nextModel, remaining);
+        }
+
         if (attempt < MAX_RETRIES) {
           // Extract retry delay, cap at MAX_RETRY_WAIT
           let waitTime = MAX_RETRY_WAIT;
@@ -360,7 +379,7 @@ async function solveOneQuestion(html, questionIndex, tabId, apiKey, model) {
           // Wait in 1s chunks so cancellation is responsive
           const retryChunks = Math.ceil(waitTime / 1000);
           for (let rc = 0; rc < retryChunks; rc++) {
-            if (autoSolveCancelled) return false;
+            if (autoSolveCancelled) return { success: false, finalModel: model };
             await new Promise(r => setTimeout(r, 1000));
           }
           continue;
@@ -369,7 +388,7 @@ async function solveOneQuestion(html, questionIndex, tabId, apiKey, model) {
           msgs.push({ role: 'ai', text: `❌ Soru ${questionIndex + 1}: Kota hatası — çözülemedi` });
           await saveChatMessages(msgs);
           chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
-          return false;
+          return { success: false, finalModel: model };
         }
       }
 
@@ -388,7 +407,7 @@ async function solveOneQuestion(html, questionIndex, tabId, apiKey, model) {
         msgs.push({ role: 'ai', text: `❌ Soru ${questionIndex + 1}: ${errMsg}` });
         await saveChatMessages(msgs);
         chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
-        return false;
+        return { success: false, finalModel: model };
       }
 
       // Success
@@ -415,7 +434,7 @@ async function solveOneQuestion(html, questionIndex, tabId, apiKey, model) {
       msgs.push({ role: 'ai', text: `⚡ Soru ${questionIndex + 1}: **${answer.trim()}**` });
       await saveChatMessages(msgs);
       chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
-      return true;
+      return { success: true, finalModel: model };
 
     } catch (err) {
       console.error('[Xolver BG] Fetch error for question', questionIndex + 1, ':', err);
@@ -425,18 +444,18 @@ async function solveOneQuestion(html, questionIndex, tabId, apiKey, model) {
         msgs.push({ role: 'ai', text: `❌ Soru ${questionIndex + 1}: Bağlantı hatası — ${err.message}` });
         await saveChatMessages(msgs);
         chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
-        return false;
+        return { success: false, finalModel: model };
       }
 
       // Wait before retry on network error
       for (let rc = 0; rc < 3; rc++) {
-        if (autoSolveCancelled) return false;
+        if (autoSolveCancelled) return { success: false, finalModel: model };
         await new Promise(r => setTimeout(r, 1000));
       }
     }
   }
 
-  return false;
+  return { success: false, finalModel: model };
 }
 
 // Handle extension install
