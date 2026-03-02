@@ -75,7 +75,7 @@ async function callGemini(html, userText) {
 
   // Build display message for UI
   const displayMsg = html
-    ? '📌 Element seçildi — analiz ediliyor...' + (userText ? '\n' + userText : '')
+    ? '📌 Analiz ediliyor...' + (userText ? '\n' + userText : '')
     : userText;
 
   // Save user message to chat
