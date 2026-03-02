@@ -56,6 +56,21 @@ document.addEventListener('DOMContentLoaded', async () => {
       İptal etmek için tıklayın...`;
   }
 
+  // Restore auto-solve button state
+  try {
+    const solveState = await chrome.runtime.sendMessage({ action: 'getAutoSolveState' });
+    if (solveState && solveState.active) {
+      isAutoSolving = true;
+      isLoading = true;
+      autoSolveBtn.classList.add('active');
+      autoSolveBtn.innerHTML = `
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18"/><path d="M6 6l12 12"/>
+        </svg>
+        \u0130ptal Et`;
+    }
+  } catch (e) {}
+
   // Load and render existing chat messages from storage
   await renderChatFromStorage();
 });

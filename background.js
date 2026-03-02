@@ -218,6 +218,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     processAutoSolveQueue(msg.questions, msg.totalQuestions, tabId);
   }
 
+  if (msg.action === 'getAutoSolveState') {
+    sendResponse({ active: autoSolveActive });
+    return true;
+  }
+
   if (msg.action === 'autoSolveCancel') {
     console.log('[Xolver BG] Auto-solve cancelled by user');
     autoSolveCancelled = true;
