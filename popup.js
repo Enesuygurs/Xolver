@@ -236,7 +236,7 @@ document.getElementById('clearChatBtn').addEventListener('click', async () => {
   chatMessages.innerHTML = `
     <div class="welcome-message">
       <div class="welcome-icon">🎯</div>
-      <p>Sayfadan bir element seçin, Xolver otomatik olarak soruyu çözecek!</p>
+      <p>Xolver çözmeye hazır!</p>
     </div>`;
 });
 
@@ -479,7 +479,7 @@ async function renderChatFromStorage() {
     chatMessages.innerHTML = `
       <div class="welcome-message">
         <div class="welcome-icon">🎯</div>
-        <p>Sayfadan bir element seçin, Xolver otomatik olarak soruyu çözecek!</p>
+        <p>Xolver çözmeye hazır!</p>
       </div>`;
     return;
   }
