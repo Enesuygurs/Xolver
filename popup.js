@@ -106,6 +106,18 @@ document.getElementById('freeApiToggle').addEventListener('change', async (e) =>
   await chrome.storage.local.set({ xolverFreeApi: e.target.checked });
 });
 
+// ===================== CLEAR CHAT =====================
+document.getElementById('clearChatBtn').addEventListener('click', async () => {
+  chrome.runtime.sendMessage({ action: 'clearChat' });
+  selectedHTML = '';
+  selectedPreview.classList.add('hidden');
+  chatMessages.innerHTML = `
+    <div class="welcome-message">
+      <div class="welcome-icon">🎯</div>
+      <p>Sayfadan bir element seçin, Xolver otomatik olarak soruyu çözecek!</p>
+    </div>`;
+});
+
 // ===================== ELEMENT SELECTOR =====================
 let isSelectingMode = false;
 let lastSelectorTabId = null;
