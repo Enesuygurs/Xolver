@@ -166,6 +166,10 @@ body.popup-mode {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 10px 12px;
 }
 
 .toggle-label {
@@ -174,15 +178,14 @@ body.popup-mode {
   color: #e4e4e7 !important;
   text-transform: none !important;
   letter-spacing: 0 !important;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
 }
 
 .toggle-hint {
   font-size: 11px;
   font-weight: 400;
   color: #71717a;
+  margin: 4px 0 0 0;
+  padding: 0 2px;
 }
 
 .toggle-switch {
