@@ -58,7 +58,7 @@ async function callGemini(html, userText) {
 
   if (!apiKey) {
     const msgs = await getChatMessages();
-    msgs.push({ role: 'system', text: '⚠ Lütfen önce Ayarlar\'dan Gemini API anahtarınızı girin.' });
+    msgs.push({ role: 'system', text: '❌ Lütfen önce Ayarlar\'dan Gemini API anahtarınızı girin.' });
     await saveChatMessages(msgs);
     chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
     return;
@@ -216,7 +216,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     autoSolveCancelled = true;
     (async () => {
       const msgs = await getChatMessages();
-      msgs.push({ role: 'system', text: '⛔ Otomatik çözüm iptal edildi' });
+      msgs.push({ role: 'autosolve-banner', text: '⛔ Otomatik çözüm iptal edildi' });
       await saveChatMessages(msgs);
       chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
     })();
@@ -225,7 +225,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.action === 'autoSolveNoQuestions') {
     (async () => {
       const msgs = await getChatMessages();
-      msgs.push({ role: 'system', text: '⚠ Sayfada soru bulunamadı' });
+      msgs.push({ role: 'autosolve-banner', text: '❌ Sayfada soru bulunamadı' });
       await saveChatMessages(msgs);
       chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
     })();
@@ -245,7 +245,7 @@ async function processAutoSolveQueue(questions, totalQuestions, tabId) {
   if (!apiKey) {
     console.log('[Xolver BG] No API key!');
     const msgs = await getChatMessages();
-    msgs.push({ role: 'system', text: '⚠ API anahtarı bulunamadı!' });
+    msgs.push({ role: 'system', text: '❌ API anahtarı bulunamadı!' });
     await saveChatMessages(msgs);
     chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
     chrome.runtime.sendMessage({ action: 'autoSolveStatus', status: 'done', solved: 0 }).catch(() => {});
@@ -256,13 +256,9 @@ async function processAutoSolveQueue(questions, totalQuestions, tabId) {
   let failedCount = 0;
 
   for (let i = 0; i < questions.length; i++) {
-    // Check cancellation
+    // Check cancellation (message already written by autoSolveCancel handler)
     if (autoSolveCancelled) {
       console.log('[Xolver BG] Auto-solve cancelled at question', i + 1);
-      const msgs = await getChatMessages();
-      msgs.push({ role: 'system', text: '⛔ Otomatik çözüm iptal edildi' });
-      await saveChatMessages(msgs);
-      chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
       chrome.runtime.sendMessage({ action: 'autoSolveStatus', status: 'done', solved: solvedCount, failed: failedCount }).catch(() => {});
       return;
     }
@@ -298,9 +294,9 @@ async function processAutoSolveQueue(questions, totalQuestions, tabId) {
   // Add completion summary to chat
   const finalMsgs = await getChatMessages();
   if (failedCount > 0) {
-    finalMsgs.push({ role: 'system', text: `✅ Otomatik çözüm tamamlandı — ${solvedCount} çözüldü, ${failedCount} başarısız` });
+    finalMsgs.push({ role: 'autosolve-banner', text: '✅ Otomatik çözüm tamamlandı — ' + solvedCount + ' çözüldü, ' + failedCount + ' başarısız' });
   } else {
-    finalMsgs.push({ role: 'system', text: `✅ Otomatik çözüm tamamlandı — ${solvedCount} soru çözüldü` });
+    finalMsgs.push({ role: 'autosolve-banner', text: '✅ Otomatik çözüm tamamlandı — ' + solvedCount + ' soru çözüldü' });
   }
   await saveChatMessages(finalMsgs);
   chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
