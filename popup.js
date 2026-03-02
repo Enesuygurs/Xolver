@@ -45,6 +45,25 @@ document.addEventListener('DOMContentLoaded', async () => {
   await renderChatFromStorage();
 });
 
+// ===================== DETACHED MODE =====================
+// Detect if running as a standalone window (not popup)
+const isDetached = new URLSearchParams(window.location.search).has('detached');
+
+document.getElementById('pinBtn').addEventListener('click', () => {
+  chrome.windows.create({
+    url: chrome.runtime.getURL('popup.html?detached=1'),
+    type: 'popup',
+    width: 420,
+    height: 600
+  });
+  window.close();
+});
+
+// Hide pin button if already detached
+if (isDetached) {
+  document.getElementById('pinBtn').style.display = 'none';
+}
+
 // ===================== SETTINGS =====================
 settingsBtn.addEventListener('click', () => {
   settingsPanel.classList.toggle('hidden');
@@ -68,7 +87,19 @@ document.getElementById('shortAnswerToggle').addEventListener('change', async (e
 
 // ===================== ELEMENT SELECTOR =====================
 selectElementBtn.addEventListener('click', async () => {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  let tab;
+
+  if (isDetached) {
+    // In detached mode, find the active tab in a normal browser window
+    const allTabs = await chrome.tabs.query({ active: true });
+    // Pick the first tab that is a real web page (not extension or chrome internal)
+    tab = allTabs.find(t => t.url && !t.url.startsWith('chrome-extension://') && !t.url.startsWith('chrome://'));
+    if (!tab) tab = allTabs.find(t => t.url && t.url.startsWith('http'));
+  } else {
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    tab = tabs[0];
+  }
+
   if (!tab) return;
 
   // Inject content script
@@ -85,9 +116,21 @@ selectElementBtn.addEventListener('click', async () => {
     // Already injected or error
   }
 
-  // Start selector and close popup — background will handle the rest
+  // Start selector
   chrome.tabs.sendMessage(tab.id, { action: 'startSelector' });
-  window.close();
+
+  // Only close if running as popup (not detached window)
+  if (!isDetached) {
+    window.close();
+  } else {
+    // In detached mode, show selecting state
+    selectElementBtn.classList.add('active');
+    selectElementBtn.innerHTML = `
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M18 6L6 18"/><path d="M6 6l12 12"/>
+      </svg>
+      Sayfaya tıklayarak element seçin...`;
+  }
 });
 
 clearSelectionBtn.addEventListener('click', () => {
@@ -135,6 +178,17 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.action === 'chatUpdated') {
     isLoading = msg.loading;
     renderChatFromStorage();
+
+    // Reset select button state in detached mode
+    if (isDetached) {
+      selectElementBtn.classList.remove('active');
+      selectElementBtn.innerHTML = `
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/>
+          <path d="M13 13l6 6"/>
+        </svg>
+        Element Seç`;
+    }
 
     // Also refresh preview if there's a new selection
     if (!isLoading) {

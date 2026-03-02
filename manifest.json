@@ -5,6 +5,7 @@
   "description": "Sayfadaki elementleri seçerek Gemini AI ile soru çözen Chrome eklentisi",
   "permissions": [
     "activeTab",
+    "tabs",
     "scripting",
     "storage"
   ],
