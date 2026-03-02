@@ -174,6 +174,15 @@ body.popup-mode {
   color: #e4e4e7 !important;
   text-transform: none !important;
   letter-spacing: 0 !important;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.toggle-hint {
+  font-size: 11px;
+  font-weight: 400;
+  color: #71717a;
 }
 
 .toggle-switch {
@@ -457,6 +466,19 @@ body.popup-mode {
   border-radius: 8px;
   font-size: 12px;
   padding: 6px 14px;
+}
+
+.msg-autosolve-banner {
+  align-self: center;
+  background: rgba(139, 92, 246, 0.15);
+  color: #c4b5fd;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 20px;
+  text-align: center;
+  letter-spacing: 0.3px;
+  border: 1px solid rgba(139, 92, 246, 0.25);
 }
 
 /* Loading dots */

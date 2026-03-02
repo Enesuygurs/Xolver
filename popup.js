@@ -20,7 +20,7 @@ const sendBtn = document.getElementById('sendBtn');
 // ===================== INIT =====================
 document.addEventListener('DOMContentLoaded', async () => {
   // Load saved API key & model
-  const data = await chrome.storage.local.get(['geminiApiKey', 'geminiModel', 'xolverShortAnswer', 'xolverLastSelected']);
+  const data = await chrome.storage.local.get(['geminiApiKey', 'geminiModel', 'xolverShortAnswer', 'xolverFreeApi', 'xolverLastSelected']);
   if (data.geminiApiKey) {
     apiKeyInput.value = data.geminiApiKey;
   }
@@ -28,6 +28,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     modelSelect.value = data.geminiModel;
   }
   document.getElementById('shortAnswerToggle').checked = !!data.xolverShortAnswer;
+  // Free API mode defaults to true if not set
+  document.getElementById('freeApiToggle').checked = data.xolverFreeApi !== false;
 
   // Restore last selected element preview
   if (data.xolverLastSelected) {
@@ -98,6 +100,10 @@ modelSelect.addEventListener('change', async () => {
 
 document.getElementById('shortAnswerToggle').addEventListener('change', async (e) => {
   await chrome.storage.local.set({ xolverShortAnswer: e.target.checked });
+});
+
+document.getElementById('freeApiToggle').addEventListener('change', async (e) => {
+  await chrome.storage.local.set({ xolverFreeApi: e.target.checked });
 });
 
 // ===================== ELEMENT SELECTOR =====================
@@ -207,7 +213,11 @@ autoSolveBtn.addEventListener('click', async () => {
     </svg>
     Çözülüyor...`;
 
-  chrome.tabs.sendMessage(tab.id, { action: 'autoSolve' });
+  // Add "Otomatik Çözüm" banner to chat via background storage
+  chrome.runtime.sendMessage({ action: 'autoSolveStart' });
+
+  // Pass tabId explicitly so content script can forward it to background
+  chrome.tabs.sendMessage(tab.id, { action: 'autoSolve', tabId: tab.id });
 });
 
 // Listen for auto-solve completion
@@ -220,7 +230,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
         </svg>
         Otomatik Çöz`;
-      showSystemMsg(`✓ ${msg.solved || 0} soru çözüldü`);
+      showSystemMsg(msg.failed > 0
+        ? `✓ ${msg.solved || 0} soru çözüldü, ${msg.failed} başarısız`
+        : `✓ ${msg.solved || 0} soru çözüldü`);
     } else if (msg.status === 'noQuestions') {
       autoSolveBtn.classList.remove('active');
       autoSolveBtn.innerHTML = `
@@ -330,11 +342,7 @@ async function renderChatFromStorage() {
 
   // Render all messages
   messages.forEach(msg => {
-    if (msg.role === 'system') {
-      addMessageEl('system', msg.text);
-    } else {
-      addMessageEl(msg.role, msg.text);
-    }
+    addMessageEl(msg.role, msg.text);
   });
 
   // Show loading indicator if waiting for response
@@ -352,7 +360,10 @@ async function renderChatFromStorage() {
 function addMessageEl(role, text) {
   const div = document.createElement('div');
 
-  if (role === 'system') {
+  if (role === 'autosolve-banner') {
+    div.classList.add('msg', 'msg-autosolve-banner');
+    div.textContent = text;
+  } else if (role === 'system') {
     div.classList.add('msg', 'msg-system');
     div.textContent = text;
   } else if (role === 'user') {

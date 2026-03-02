@@ -193,73 +193,194 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     });
   }
 
-  if (msg.action === 'autoSolveQuestion') {
-    // Auto-solve: call Gemini and send answer back to content script tab
-    autoSolveQuestion(msg.html, msg.questionIndex, msg.totalQuestions, sender.tab?.id);
+  if (msg.action === 'autoSolveStart') {
+    // Add "Otomatik Çözüm" banner to chat
+    (async () => {
+      const msgs = await getChatMessages();
+      msgs.push({ role: 'autosolve-banner', text: '⚡ Otomatik Çözüm' });
+      await saveChatMessages(msgs);
+      chrome.runtime.sendMessage({ action: 'chatUpdated', loading: true }).catch(() => {});
+    })();
+  }
+
+  if (msg.action === 'autoSolveAllQuestions') {
+    // Receive all questions at once, process sequentially
+    const tabId = msg.tabId || sender.tab?.id;
+    console.log('[Xolver BG] autoSolveAllQuestions received,', msg.questions.length, 'questions, tabId:', tabId);
+    processAutoSolveQueue(msg.questions, msg.totalQuestions, tabId);
   }
 });
 
-// ===================== AUTO-SOLVE GEMINI CALL =====================
-async function autoSolveQuestion(html, questionIndex, totalQuestions, tabId) {
+// ===================== AUTO-SOLVE SEQUENTIAL QUEUE =====================
+const MAX_RETRIES = 2;
+const MAX_RETRY_WAIT = 20000; // Never wait more than 20 seconds
+
+async function processAutoSolveQueue(questions, totalQuestions, tabId) {
   const data = await chrome.storage.local.get(['geminiApiKey', 'geminiModel']);
   const apiKey = data.geminiApiKey;
   const model = data.geminiModel || 'gemini-2.5-flash';
 
   if (!apiKey) {
+    console.log('[Xolver BG] No API key!');
+    const msgs = await getChatMessages();
+    msgs.push({ role: 'system', text: '⚠ API anahtarı bulunamadı!' });
+    await saveChatMessages(msgs);
+    chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
     chrome.runtime.sendMessage({ action: 'autoSolveStatus', status: 'done', solved: 0 }).catch(() => {});
     return;
   }
 
+  let solvedCount = 0;
+  let failedCount = 0;
+
+  for (let i = 0; i < questions.length; i++) {
+    const q = questions[i];
+    console.log('[Xolver BG] Processing question', q.questionIndex + 1, '/', totalQuestions);
+
+    const success = await solveOneQuestion(q.html, q.questionIndex, tabId, apiKey, model);
+    if (success) {
+      solvedCount++;
+    } else {
+      failedCount++;
+    }
+
+    // Pace requests based on free API mode setting
+    if (i < questions.length - 1) {
+      const settings = await chrome.storage.local.get('xolverFreeApi');
+      const isFreeApi = settings.xolverFreeApi !== false; // default true
+      const delay = isFreeApi ? 13000 : 1000; // 13s for free tier, 1s for paid
+      console.log('[Xolver BG] Waiting', delay, 'ms before next question (freeApi:', isFreeApi, ')');
+      await new Promise(r => setTimeout(r, delay));
+    }
+  }
+
+  // Final status
+  console.log('[Xolver BG] Auto-solve complete:', solvedCount, 'solved,', failedCount, 'failed');
+  chrome.runtime.sendMessage({
+    action: 'autoSolveStatus',
+    status: 'done',
+    solved: solvedCount,
+    failed: failedCount
+  }).catch(() => {});
+  focusXolverWindow();
+}
+
+async function solveOneQuestion(html, questionIndex, tabId, apiKey, model) {
   const apiMsg = `Bu HTML bir sınav/test sorusudur. Doğru cevabın şıkkını (harfini) söyle:\n\n\`\`\`html\n${html}\n\`\`\``;
 
-  try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: SYSTEM_INSTRUCTION_AUTOSOLVE }] },
-          contents: [{ role: 'user', parts: [{ text: apiMsg }] }],
-          generationConfig: {
-            temperature: 0.2,
-            maxOutputTokens: 100,
-          }
-        })
-      }
-    );
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      // 30 second timeout for each fetch
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30000);
 
-    if (response.ok) {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: SYSTEM_INSTRUCTION_AUTOSOLVE }] },
+            contents: [{ role: 'user', parts: [{ text: apiMsg }] }],
+            generationConfig: {
+              temperature: 0.2,
+              maxOutputTokens: 100,
+            }
+          })
+        }
+      );
+      clearTimeout(timeout);
+
+      if (response.status === 429) {
+        const errBody = await response.text();
+        console.warn('[Xolver BG] Rate limited on question', questionIndex + 1, 'attempt', attempt + 1);
+
+        if (attempt < MAX_RETRIES) {
+          // Extract retry delay, cap at MAX_RETRY_WAIT
+          let waitTime = MAX_RETRY_WAIT;
+          const retryMatch = errBody.match(/retry in ([\d.]+)s/i);
+          if (retryMatch) {
+            waitTime = Math.min(Math.ceil(parseFloat(retryMatch[1]) * 1000) + 1000, MAX_RETRY_WAIT);
+          }
+
+          const msgs = await getChatMessages();
+          msgs.push({ role: 'system', text: `⏳ Soru ${questionIndex + 1}: Kota aşıldı, ${Math.ceil(waitTime / 1000)}sn bekleniyor...` });
+          await saveChatMessages(msgs);
+          chrome.runtime.sendMessage({ action: 'chatUpdated', loading: true }).catch(() => {});
+
+          await new Promise(r => setTimeout(r, waitTime));
+          continue;
+        } else {
+          const msgs = await getChatMessages();
+          msgs.push({ role: 'ai', text: `❌ Soru ${questionIndex + 1}: Kota hatası — çözülemedi` });
+          await saveChatMessages(msgs);
+          chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
+          return false;
+        }
+      }
+
+      if (!response.ok) {
+        const errBody = await response.text();
+        console.error('[Xolver BG] API error for question', questionIndex + 1, ':', response.status, errBody);
+
+        // Show error in chat
+        let errMsg = `HTTP ${response.status}`;
+        try {
+          const errJson = JSON.parse(errBody);
+          errMsg = errJson.error?.message || errMsg;
+        } catch(e) {}
+
+        const msgs = await getChatMessages();
+        msgs.push({ role: 'ai', text: `❌ Soru ${questionIndex + 1}: ${errMsg}` });
+        await saveChatMessages(msgs);
+        chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
+        return false;
+      }
+
+      // Success
       const result = await response.json();
       const answer = result.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      console.log('[Xolver BG] Got answer for question', questionIndex + 1, ':', JSON.stringify(answer));
 
-      // Send answer back to content script on the source tab
+      // Send answer to content script
       if (tabId) {
-        chrome.tabs.sendMessage(tabId, {
-          action: 'autoSolveAnswer',
-          questionIndex: questionIndex,
-          answer: answer.trim()
-        });
+        try {
+          await chrome.tabs.sendMessage(tabId, {
+            action: 'autoSolveAnswer',
+            questionIndex: questionIndex,
+            answer: answer.trim()
+          });
+          console.log('[Xolver BG] Sent answer to tab', tabId);
+        } catch (sendErr) {
+          console.error('[Xolver BG] Failed to send to tab', tabId, ':', sendErr);
+        }
       }
 
-      // Also add to chat for visibility
+      // Add to chat
       const msgs = await getChatMessages();
       msgs.push({ role: 'ai', text: `⚡ Soru ${questionIndex + 1}: **${answer.trim()}**` });
       await saveChatMessages(msgs);
       chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
+      return true;
+
+    } catch (err) {
+      console.error('[Xolver BG] Fetch error for question', questionIndex + 1, ':', err);
+
+      if (attempt >= MAX_RETRIES) {
+        const msgs = await getChatMessages();
+        msgs.push({ role: 'ai', text: `❌ Soru ${questionIndex + 1}: Bağlantı hatası — ${err.message}` });
+        await saveChatMessages(msgs);
+        chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
+        return false;
+      }
+
+      // Wait before retry on network error
+      await new Promise(r => setTimeout(r, 3000));
     }
-  } catch (err) {
-    console.error('Auto-solve error:', err);
   }
 
-  // If this is the last question, notify completion
-  if (questionIndex === totalQuestions - 1) {
-    // Small delay to let all answers process
-    setTimeout(() => {
-      chrome.runtime.sendMessage({ action: 'autoSolveStatus', status: 'done', solved: totalQuestions }).catch(() => {});
-      focusXolverWindow();
-    }, 500);
-  }
+  return false;
 }
 
 // Handle extension install
