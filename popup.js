@@ -1,7 +1,6 @@
 // ===================== STATE =====================
 let selectedHTML = '';
-let chatHistory = [];
-let isSelecting = false;
+let isLoading = false;
 
 // ===================== DOM =====================
 const settingsBtn = document.getElementById('settingsBtn');
@@ -21,13 +20,28 @@ const sendBtn = document.getElementById('sendBtn');
 // ===================== INIT =====================
 document.addEventListener('DOMContentLoaded', async () => {
   // Load saved API key & model
-  const data = await chrome.storage.local.get(['geminiApiKey', 'geminiModel']);
+  const data = await chrome.storage.local.get(['geminiApiKey', 'geminiModel', 'xolverLastSelected']);
   if (data.geminiApiKey) {
     apiKeyInput.value = data.geminiApiKey;
   }
   if (data.geminiModel) {
     modelSelect.value = data.geminiModel;
   }
+
+  // Restore last selected element preview
+  if (data.xolverLastSelected) {
+    const sel = data.xolverLastSelected;
+    selectedHTML = sel.html;
+    selectedPreview.classList.remove('hidden');
+    previewTag.textContent = `<${sel.tagInfo || 'element'}>`;
+    const maxPreview = 500;
+    previewCode.textContent = sel.html.length > maxPreview
+      ? sel.html.substring(0, maxPreview) + '...'
+      : sel.html;
+  }
+
+  // Load and render existing chat messages from storage
+  await renderChatFromStorage();
 });
 
 // ===================== SETTINGS =====================
@@ -52,20 +66,6 @@ selectElementBtn.addEventListener('click', async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab) return;
 
-  if (isSelecting) {
-    // Cancel selection
-    isSelecting = false;
-    selectElementBtn.classList.remove('active');
-    selectElementBtn.innerHTML = `
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/>
-        <path d="M13 13l6 6"/>
-      </svg>
-      Element Seç`;
-    chrome.tabs.sendMessage(tab.id, { action: 'stopSelector' }).catch(() => {});
-    return;
-  }
-
   // Inject content script
   try {
     await chrome.scripting.executeScript({
@@ -80,59 +80,35 @@ selectElementBtn.addEventListener('click', async () => {
     // Already injected or error
   }
 
-  isSelecting = true;
-  selectElementBtn.classList.add('active');
-  selectElementBtn.innerHTML = `
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M18 6L6 18"/><path d="M6 6l12 12"/>
-    </svg>
-    Seçimi İptal Et`;
-
+  // Start selector and close popup — background will handle the rest
   chrome.tabs.sendMessage(tab.id, { action: 'startSelector' });
-});
-
-// Listen for selected element from content script
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  if (msg.action === 'elementSelected') {
-    isSelecting = false;
-    selectElementBtn.classList.remove('active');
-    selectElementBtn.innerHTML = `
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/>
-        <path d="M13 13l6 6"/>
-      </svg>
-      Element Seç`;
-
-    selectedHTML = msg.html;
-    const tagInfo = msg.tagInfo || 'element';
-
-    // Show preview
-    selectedPreview.classList.remove('hidden');
-    previewTag.textContent = `<${tagInfo}>`;
-
-    // Truncate for preview
-    const maxPreview = 500;
-    previewCode.textContent = selectedHTML.length > maxPreview
-      ? selectedHTML.substring(0, maxPreview) + '...'
-      : selectedHTML;
-
-    // Auto-send to Gemini
-    sendToGemini(selectedHTML, '');
-  }
+  window.close();
 });
 
 clearSelectionBtn.addEventListener('click', () => {
   selectedHTML = '';
   selectedPreview.classList.add('hidden');
+  chrome.storage.local.set({ xolverLastSelected: null });
 });
 
 // ===================== CHAT =====================
 sendBtn.addEventListener('click', () => {
   const text = userInput.value.trim();
   if (!text && !selectedHTML) return;
-  sendToGemini(selectedHTML, text);
+
+  // Send to background for Gemini processing
+  chrome.runtime.sendMessage({
+    action: 'sendMessage',
+    html: selectedHTML,
+    text: text
+  });
+
   userInput.value = '';
   autoResizeTextarea();
+
+  // Show loading immediately
+  isLoading = true;
+  renderChatFromStorage();
 });
 
 userInput.addEventListener('keydown', (e) => {
@@ -149,113 +125,84 @@ function autoResizeTextarea() {
   userInput.style.height = Math.min(userInput.scrollHeight, 80) + 'px';
 }
 
-async function sendToGemini(html, userText) {
-  const data = await chrome.storage.local.get(['geminiApiKey', 'geminiModel']);
-  const apiKey = data.geminiApiKey;
-  const model = data.geminiModel || 'gemini-2.5-flash';
+// ===================== LISTEN FOR UPDATES FROM BACKGROUND =====================
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.action === 'chatUpdated') {
+    isLoading = msg.loading;
+    renderChatFromStorage();
 
-  if (!apiKey) {
-    showSystemMsg('⚠ Lütfen önce Ayarlar\'dan Gemini API anahtarınızı girin.');
-    settingsPanel.classList.remove('hidden');
+    // Also refresh preview if there's a new selection
+    if (!isLoading) {
+      chrome.storage.local.get('xolverLastSelected', (data) => {
+        if (data.xolverLastSelected) {
+          const sel = data.xolverLastSelected;
+          selectedHTML = sel.html;
+          selectedPreview.classList.remove('hidden');
+          previewTag.textContent = `<${sel.tagInfo || 'element'}>`;
+          const maxPreview = 500;
+          previewCode.textContent = sel.html.length > maxPreview
+            ? sel.html.substring(0, maxPreview) + '...'
+            : sel.html;
+        }
+      });
+    }
+  }
+});
+
+// ===================== RENDER CHAT FROM STORAGE =====================
+async function renderChatFromStorage() {
+  const data = await chrome.storage.local.get('xolverChatMessages');
+  const messages = data.xolverChatMessages || [];
+
+  // Clear chat area
+  chatMessages.innerHTML = '';
+
+  if (messages.length === 0 && !isLoading) {
+    // Show welcome
+    chatMessages.innerHTML = `
+      <div class="welcome-message">
+        <div class="welcome-icon">🎯</div>
+        <p>Sayfadan bir element seçin, Xolver otomatik olarak soruyu çözecek!</p>
+      </div>`;
     return;
   }
 
-  // Build user message
-  let userMsg = '';
-  if (html) {
-    userMsg += `Aşağıdaki HTML elementi bir web sayfasından seçildi. Bu bir soru veya test sorusu olabilir. Lütfen içeriği analiz et ve soruyu yanıtla. Cevabı doğrudan ver, açıklama ekle.\n\n\`\`\`html\n${html}\n\`\`\``;
-  }
-  if (userText) {
-    userMsg += (html ? '\n\nKullanıcının ek mesajı: ' : '') + userText;
-  }
-
-  // Remove welcome
-  const welcome = chatMessages.querySelector('.welcome-message');
-  if (welcome) welcome.remove();
-
-  // Add user message to chat
-  addMessage('user', html ? '📌 Element seçildi — analiz ediliyor...' + (userText ? '\n' + userText : '') : userText);
-
-  // Add loading
-  const loadingEl = addLoading();
-
-  // Build API request
-  chatHistory.push({ role: 'user', parts: [{ text: userMsg }] });
-
-  const systemInstruction = `Sen "Xolver" adlı bir soru çözme asistanısın. Kullanıcı sana web sayfalarından seçtiği HTML elementlerini gönderecek. Bu elementler genellikle soru, test sorusu veya problem içerir.
-
-Görevin:
-1. HTML içeriğini analiz et ve soruyu/problemi tespit et
-2. Soruyu net ve doğru bir şekilde yanıtla
-3. Eğer test sorusuysa, doğru şıkkı belirt ve nedenini açıkla
-4. Eğer açık uçlu bir soruysa, kapsamlı bir cevap ver
-5. Matematiksel işlemler gerekiyorsa adım adım çöz
-6. Yanıtlarını Türkçe ver
-
-Markdown formatında yanıtla.`;
-
-  try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: systemInstruction }] },
-          contents: chatHistory,
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 4096,
-          }
-        })
-      }
-    );
-
-    loadingEl.remove();
-
-    if (!response.ok) {
-      const err = await response.json();
-      const errMsg = err.error?.message || `HTTP ${response.status}`;
-      addMessage('ai', `❌ Hata: ${errMsg}`);
-      chatHistory.pop(); // Remove failed message
-      return;
+  // Render all messages
+  messages.forEach(msg => {
+    if (msg.role === 'system') {
+      addMessageEl('system', msg.text);
+    } else {
+      addMessageEl(msg.role, msg.text);
     }
+  });
 
-    const result = await response.json();
-    const aiText = result.candidates?.[0]?.content?.parts?.[0]?.text || 'Yanıt alınamadı.';
-
-    chatHistory.push({ role: 'model', parts: [{ text: aiText }] });
-    addMessage('ai', aiText);
-
-  } catch (err) {
-    loadingEl.remove();
-    addMessage('ai', `❌ Bağlantı hatası: ${err.message}`);
-    chatHistory.pop();
+  // Show loading indicator if waiting for response
+  if (isLoading) {
+    const div = document.createElement('div');
+    div.classList.add('msg', 'msg-ai');
+    div.innerHTML = '<div class="loading-dots"><span></span><span></span><span></span></div>';
+    chatMessages.appendChild(div);
   }
+
+  chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
 // ===================== UI HELPERS =====================
-function addMessage(role, text) {
+function addMessageEl(role, text) {
   const div = document.createElement('div');
-  div.classList.add('msg', role === 'user' ? 'msg-user' : 'msg-ai');
 
-  if (role === 'ai') {
-    div.innerHTML = renderMarkdown(text);
-  } else {
+  if (role === 'system') {
+    div.classList.add('msg', 'msg-system');
     div.textContent = text;
+  } else if (role === 'user') {
+    div.classList.add('msg', 'msg-user');
+    div.textContent = text;
+  } else {
+    div.classList.add('msg', 'msg-ai');
+    div.innerHTML = renderMarkdown(text);
   }
 
   chatMessages.appendChild(div);
-  chatMessages.scrollTop = chatMessages.scrollHeight;
-  return div;
-}
-
-function addLoading() {
-  const div = document.createElement('div');
-  div.classList.add('msg', 'msg-ai');
-  div.innerHTML = '<div class="loading-dots"><span></span><span></span><span></span></div>';
-  chatMessages.appendChild(div);
-  chatMessages.scrollTop = chatMessages.scrollHeight;
   return div;
 }
 
