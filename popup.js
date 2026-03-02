@@ -101,7 +101,27 @@ document.getElementById('shortAnswerToggle').addEventListener('change', async (e
 });
 
 // ===================== ELEMENT SELECTOR =====================
+let isSelectingMode = false;
+let lastSelectorTabId = null;
+
 selectElementBtn.addEventListener('click', async () => {
+  // If already selecting, cancel it
+  if (isSelectingMode && isDetached) {
+    isSelectingMode = false;
+    selectElementBtn.classList.remove('active');
+    selectElementBtn.innerHTML = `
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/>
+        <path d="M13 13l6 6"/>
+      </svg>
+      Element Seç`;
+    if (lastSelectorTabId) {
+      chrome.tabs.sendMessage(lastSelectorTabId, { action: 'stopSelector' }).catch(() => {});
+      lastSelectorTabId = null;
+    }
+    return;
+  }
+
   let tab;
 
   if (isDetached) {
@@ -139,6 +159,8 @@ selectElementBtn.addEventListener('click', async () => {
     window.close();
   } else {
     // In detached mode, show selecting state
+    isSelectingMode = true;
+    lastSelectorTabId = tab.id;
     selectElementBtn.classList.add('active');
     selectElementBtn.innerHTML = `
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -196,6 +218,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
     // Reset select button state in detached mode
     if (isDetached) {
+      isSelectingMode = false;
+      lastSelectorTabId = null;
       selectElementBtn.classList.remove('active');
       selectElementBtn.innerHTML = `
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
