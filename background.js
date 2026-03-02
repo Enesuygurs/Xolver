@@ -308,7 +308,7 @@ async function processAutoSolveQueue(questions, totalQuestions, tabId) {
   // Add completion summary to chat
   const finalMsgs = await getChatMessages();
   if (failedCount > 0) {
-    finalMsgs.push({ role: 'autosolve-banner', text: '✅ Otomatik çözüm tamamlandı — ' + solvedCount + ' çözüldü, ' + failedCount + ' başarısız' });
+    finalMsgs.push({ role: 'autosolve-banner', text: '⚡ Otomatik çözüm tamamlandı\n✅ ' + solvedCount + ' çözüldü, ❌ ' + failedCount + ' başarısız' });
   } else {
     finalMsgs.push({ role: 'autosolve-banner', text: '✅ Otomatik çözüm tamamlandı — ' + solvedCount + ' soru çözüldü' });
   }
