@@ -170,6 +170,69 @@ selectElementBtn.addEventListener('click', async () => {
   }
 });
 
+// ===================== AUTO SOLVE =====================
+const autoSolveBtn = document.getElementById('autoSolveBtn');
+
+autoSolveBtn.addEventListener('click', async () => {
+  let tab;
+
+  if (isDetached) {
+    const allTabs = await chrome.tabs.query({ active: true });
+    tab = allTabs.find(t => t.url && !t.url.startsWith('chrome-extension://') && !t.url.startsWith('chrome://'));
+    if (!tab) tab = allTabs.find(t => t.url && t.url.startsWith('http'));
+  } else {
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    tab = tabs[0];
+  }
+
+  if (!tab) return;
+
+  // Inject content script
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ['content.js']
+    });
+    await chrome.scripting.insertCSS({
+      target: { tabId: tab.id },
+      files: ['content.css']
+    });
+  } catch (e) {}
+
+  // Tell content script to auto-detect and solve questions
+  autoSolveBtn.classList.add('active');
+  autoSolveBtn.innerHTML = `
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+    </svg>
+    Çözülüyor...`;
+
+  chrome.tabs.sendMessage(tab.id, { action: 'autoSolve' });
+});
+
+// Listen for auto-solve completion
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.action === 'autoSolveStatus') {
+    if (msg.status === 'done') {
+      autoSolveBtn.classList.remove('active');
+      autoSolveBtn.innerHTML = `
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+        </svg>
+        Otomatik Çöz`;
+      showSystemMsg(`✓ ${msg.solved || 0} soru çözüldü`);
+    } else if (msg.status === 'noQuestions') {
+      autoSolveBtn.classList.remove('active');
+      autoSolveBtn.innerHTML = `
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+        </svg>
+        Otomatik Çöz`;
+      showSystemMsg('⚠ Sayfada soru bulunamadı');
+    }
+  }
+});
+
 clearSelectionBtn.addEventListener('click', () => {
   selectedHTML = '';
   selectedPreview.classList.add('hidden');

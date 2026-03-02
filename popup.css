@@ -228,13 +228,20 @@ body.popup-mode {
   overflow: hidden;
 }
 
+/* ===== Action Buttons Row ===== */
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  margin: 12px 16px;
+}
+
 /* ===== Select Button ===== */
 .select-btn {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  margin: 12px 16px;
+  flex: 1;
   padding: 10px;
   border-radius: 10px;
   border: 2px dashed #3f3f50;

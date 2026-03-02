@@ -23,6 +23,14 @@ KURALLAR:
 - Gereksiz söz yazma, doğrudan cevap ver.
 - Türkçe yanıtla.`;
 
+const SYSTEM_INSTRUCTION_AUTOSOLVE = `Sen bir soru çözme botusun. Sana HTML formatında bir soru gönderilecek. 
+
+MUTLAK KURALLAR:
+- SADECE doğru şıkkın harfini yaz. Örnek: A veya B veya C veya D
+- Başka HİÇBİR ŞEY yazma. Açıklama yapma, nokta koyma, cümle yazma.
+- Sadece tek bir büyük harf yaz.
+- Eğer açık uçlu bir soruysa en kısa cevabı yaz.`;
+
 // ===================== STORAGE HELPERS =====================
 async function getChatMessages() {
   const data = await chrome.storage.local.get('xolverChatMessages');
@@ -184,7 +192,75 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       xolverLastSelected: null
     });
   }
+
+  if (msg.action === 'autoSolveQuestion') {
+    // Auto-solve: call Gemini and send answer back to content script tab
+    autoSolveQuestion(msg.html, msg.questionIndex, msg.totalQuestions, sender.tab?.id);
+  }
 });
+
+// ===================== AUTO-SOLVE GEMINI CALL =====================
+async function autoSolveQuestion(html, questionIndex, totalQuestions, tabId) {
+  const data = await chrome.storage.local.get(['geminiApiKey', 'geminiModel']);
+  const apiKey = data.geminiApiKey;
+  const model = data.geminiModel || 'gemini-2.5-flash';
+
+  if (!apiKey) {
+    chrome.runtime.sendMessage({ action: 'autoSolveStatus', status: 'done', solved: 0 }).catch(() => {});
+    return;
+  }
+
+  const apiMsg = `Bu HTML bir sınav/test sorusudur. Doğru cevabın şıkkını (harfini) söyle:\n\n\`\`\`html\n${html}\n\`\`\``;
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: SYSTEM_INSTRUCTION_AUTOSOLVE }] },
+          contents: [{ role: 'user', parts: [{ text: apiMsg }] }],
+          generationConfig: {
+            temperature: 0.2,
+            maxOutputTokens: 100,
+          }
+        })
+      }
+    );
+
+    if (response.ok) {
+      const result = await response.json();
+      const answer = result.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+      // Send answer back to content script on the source tab
+      if (tabId) {
+        chrome.tabs.sendMessage(tabId, {
+          action: 'autoSolveAnswer',
+          questionIndex: questionIndex,
+          answer: answer.trim()
+        });
+      }
+
+      // Also add to chat for visibility
+      const msgs = await getChatMessages();
+      msgs.push({ role: 'ai', text: `⚡ Soru ${questionIndex + 1}: **${answer.trim()}**` });
+      await saveChatMessages(msgs);
+      chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
+    }
+  } catch (err) {
+    console.error('Auto-solve error:', err);
+  }
+
+  // If this is the last question, notify completion
+  if (questionIndex === totalQuestions - 1) {
+    // Small delay to let all answers process
+    setTimeout(() => {
+      chrome.runtime.sendMessage({ action: 'autoSolveStatus', status: 'done', solved: totalQuestions }).catch(() => {});
+      focusXolverWindow();
+    }, 500);
+  }
+}
 
 // Handle extension install
 chrome.runtime.onInstalled.addListener(() => {
