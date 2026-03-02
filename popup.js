@@ -20,13 +20,14 @@ const sendBtn = document.getElementById('sendBtn');
 // ===================== INIT =====================
 document.addEventListener('DOMContentLoaded', async () => {
   // Load saved API key & model
-  const data = await chrome.storage.local.get(['geminiApiKey', 'geminiModel', 'xolverLastSelected']);
+  const data = await chrome.storage.local.get(['geminiApiKey', 'geminiModel', 'xolverShortAnswer', 'xolverLastSelected']);
   if (data.geminiApiKey) {
     apiKeyInput.value = data.geminiApiKey;
   }
   if (data.geminiModel) {
     modelSelect.value = data.geminiModel;
   }
+  document.getElementById('shortAnswerToggle').checked = !!data.xolverShortAnswer;
 
   // Restore last selected element preview
   if (data.xolverLastSelected) {
@@ -59,6 +60,10 @@ saveApiKeyBtn.addEventListener('click', async () => {
 
 modelSelect.addEventListener('change', async () => {
   await chrome.storage.local.set({ geminiModel: modelSelect.value });
+});
+
+document.getElementById('shortAnswerToggle').addEventListener('change', async (e) => {
+  await chrome.storage.local.set({ xolverShortAnswer: e.target.checked });
 });
 
 // ===================== ELEMENT SELECTOR =====================

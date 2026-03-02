@@ -13,6 +13,16 @@ Görevin:
 
 Markdown formatında yanıtla.`;
 
+const SYSTEM_INSTRUCTION_SHORT = `Sen "Xolver" adlı bir soru çözme asistanısın. Kullanıcı sana web sayfalarından seçtiği HTML elementlerini gönderecek.
+
+KURALLAR:
+- SADECE cevabı ver, açıklama yapma.
+- Test sorusuysa sadece doğru şıkkı yaz (örn: "B").
+- Açık uçlu soruysa en kısa şekilde cevapla.
+- Matematiksel sorularda sadece sonucu yaz.
+- Gereksiz söz yazma, doğrudan cevap ver.
+- Türkçe yanıtla.`;
+
 // ===================== STORAGE HELPERS =====================
 async function getChatMessages() {
   const data = await chrome.storage.local.get('xolverChatMessages');
@@ -34,7 +44,7 @@ async function saveApiHistory(history) {
 
 // ===================== GEMINI API =====================
 async function callGemini(html, userText) {
-  const data = await chrome.storage.local.get(['geminiApiKey', 'geminiModel']);
+  const data = await chrome.storage.local.get(['geminiApiKey', 'geminiModel', 'xolverShortAnswer']);
   const apiKey = data.geminiApiKey;
   const model = data.geminiModel || 'gemini-2.5-flash';
 
@@ -80,7 +90,7 @@ async function callGemini(html, userText) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          system_instruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
+          system_instruction: { parts: [{ text: data.xolverShortAnswer ? SYSTEM_INSTRUCTION_SHORT : SYSTEM_INSTRUCTION }] },
           contents: apiHistory,
           generationConfig: {
             temperature: 0.7,
