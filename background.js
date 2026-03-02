@@ -194,12 +194,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 
   if (msg.action === 'autoSolveStart') {
-    // Add "Otomatik Çözüm" banner to chat
+    // Add "Otomatik Çözüm" banner to chat (don't set loading:true here to avoid race with noQuestions)
     (async () => {
       const msgs = await getChatMessages();
       msgs.push({ role: 'autosolve-banner', text: '⚡ Otomatik Çözüm' });
       await saveChatMessages(msgs);
-      chrome.runtime.sendMessage({ action: 'chatUpdated', loading: true }).catch(() => {});
+      chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
     })();
   }
 
@@ -214,6 +214,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.action === 'autoSolveCancel') {
     console.log('[Xolver BG] Auto-solve cancelled by user');
     autoSolveCancelled = true;
+    chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
   }
 });
 
