@@ -43,6 +43,19 @@ document.addEventListener('DOMContentLoaded', async () => {
       : sel.html;
   }
 
+  // Restore selector state (persists across popup close/reopen)
+  const selectorState = await chrome.storage.local.get('xolverSelectorActive');
+  if (selectorState.xolverSelectorActive) {
+    isSelectingMode = true;
+    lastSelectorTabId = selectorState.xolverSelectorActive.tabId;
+    selectElementBtn.classList.add('active');
+    selectElementBtn.innerHTML = `
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M18 6L6 18"/><path d="M6 6l12 12"/>
+      </svg>
+      İptal etmek için tıklayın...`;
+  }
+
   // Load and render existing chat messages from storage
   await renderChatFromStorage();
 });
@@ -246,7 +259,7 @@ let lastSelectorTabId = null;
 
 selectElementBtn.addEventListener('click', async () => {
   // If already selecting, cancel it
-  if (isSelectingMode && isDetached) {
+  if (isSelectingMode) {
     isSelectingMode = false;
     selectElementBtn.classList.remove('active');
     selectElementBtn.innerHTML = `
@@ -255,6 +268,7 @@ selectElementBtn.addEventListener('click', async () => {
         <path d="M13 13l6 6"/>
       </svg>
       Element Seç`;
+    chrome.storage.local.remove('xolverSelectorActive');
     if (lastSelectorTabId) {
       chrome.tabs.sendMessage(lastSelectorTabId, { action: 'stopSelector' }).catch(() => {});
       lastSelectorTabId = null;
@@ -294,19 +308,21 @@ selectElementBtn.addEventListener('click', async () => {
   // Start selector
   chrome.tabs.sendMessage(tab.id, { action: 'startSelector' });
 
+  // Save selector state so it persists across popup close/reopen
+  isSelectingMode = true;
+  lastSelectorTabId = tab.id;
+  chrome.storage.local.set({ xolverSelectorActive: { tabId: tab.id } });
+
   // Only close if running as popup (not detached window)
   if (!isDetached) {
     window.close();
   } else {
-    // In detached mode, show selecting state
-    isSelectingMode = true;
-    lastSelectorTabId = tab.id;
     selectElementBtn.classList.add('active');
     selectElementBtn.innerHTML = `
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M18 6L6 18"/><path d="M6 6l12 12"/>
       </svg>
-      Sayfaya tıklayarak element seçin...`;
+      İptal etmek için tıklayın...`;
   }
 });
 
@@ -435,18 +451,17 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     isLoading = msg.loading;
     renderChatFromStorage();
 
-    // Reset select button state in detached mode
-    if (isDetached) {
-      isSelectingMode = false;
-      lastSelectorTabId = null;
-      selectElementBtn.classList.remove('active');
-      selectElementBtn.innerHTML = `
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/>
-          <path d="M13 13l6 6"/>
-        </svg>
-        Element Seç`;
-    }
+    // Reset select button state
+    isSelectingMode = false;
+    lastSelectorTabId = null;
+    chrome.storage.local.remove('xolverSelectorActive');
+    selectElementBtn.classList.remove('active');
+    selectElementBtn.innerHTML = `
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/>
+        <path d="M13 13l6 6"/>
+      </svg>
+      Element Seç`;
 
     // Also refresh preview if there's a new selection
     if (!isLoading) {
