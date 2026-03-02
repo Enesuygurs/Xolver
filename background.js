@@ -314,6 +314,9 @@ async function solveOneQuestion(html, questionIndex, tabId, apiKey, model) {
   const apiMsg = `Bu HTML bir sınav/test sorusudur. Doğru cevabın şıkkını (harfini) söyle:\n\n\`\`\`html\n${html}\n\`\`\``;
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    // Check cancellation before each attempt
+    if (autoSolveCancelled) return false;
+
     try {
       // 30 second timeout for each fetch
       const controller = new AbortController();
@@ -354,7 +357,12 @@ async function solveOneQuestion(html, questionIndex, tabId, apiKey, model) {
           await saveChatMessages(msgs);
           chrome.runtime.sendMessage({ action: 'chatUpdated', loading: true }).catch(() => {});
 
-          await new Promise(r => setTimeout(r, waitTime));
+          // Wait in 1s chunks so cancellation is responsive
+          const retryChunks = Math.ceil(waitTime / 1000);
+          for (let rc = 0; rc < retryChunks; rc++) {
+            if (autoSolveCancelled) return false;
+            await new Promise(r => setTimeout(r, 1000));
+          }
           continue;
         } else {
           const msgs = await getChatMessages();
@@ -421,7 +429,10 @@ async function solveOneQuestion(html, questionIndex, tabId, apiKey, model) {
       }
 
       // Wait before retry on network error
-      await new Promise(r => setTimeout(r, 3000));
+      for (let rc = 0; rc < 3; rc++) {
+        if (autoSolveCancelled) return false;
+        await new Promise(r => setTimeout(r, 1000));
+      }
     }
   }
 
