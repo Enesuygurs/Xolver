@@ -195,6 +195,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
   if (msg.action === 'autoSolveStart') {
     // Add "Otomatik Çözüm" banner to chat (don't set loading:true here to avoid race with noQuestions)
+    autoSolveActive = false;  // Reset for new auto-solve session
     (async () => {
       const msgs = await getChatMessages();
       msgs.push({ role: 'autosolve-banner', text: '⚡ Otomatik Çözüm' });
@@ -204,8 +205,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 
   if (msg.action === 'autoSolveAllQuestions') {
+    // Ignore duplicate messages from multiple frames
+    if (autoSolveActive) {
+      console.log('[Xolver BG] Ignoring duplicate autoSolveAllQuestions — already processing');
+      return;
+    }
     // Receive all questions at once, process sequentially
     autoSolveCancelled = false;
+    autoSolveActive = true;
     const tabId = msg.tabId || sender.tab?.id;
     console.log('[Xolver BG] autoSolveAllQuestions received,', msg.questions.length, 'questions, tabId:', tabId);
     processAutoSolveQueue(msg.questions, msg.totalQuestions, tabId);
@@ -223,6 +230,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 
   if (msg.action === 'autoSolveNoQuestions') {
+    // Ignore if another frame already found questions
+    if (autoSolveActive) {
+      console.log('[Xolver BG] Ignoring autoSolveNoQuestions — questions already found from another frame');
+      return;
+    }
     (async () => {
       const msgs = await getChatMessages();
       msgs.push({ role: 'autosolve-banner', text: '❌ Sayfada soru bulunamadı' });
@@ -236,6 +248,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 const MAX_RETRIES = 2;
 const MAX_RETRY_WAIT = 20000;
 let autoSolveCancelled = false;
+let autoSolveActive = false;  // true when questions were found and processing started
 
 async function processAutoSolveQueue(questions, totalQuestions, tabId) {
   const data = await chrome.storage.local.get(['geminiApiKey', 'geminiModel']);
@@ -289,6 +302,7 @@ async function processAutoSolveQueue(questions, totalQuestions, tabId) {
   }
 
   // Final status
+  autoSolveActive = false;
   console.log('[Xolver BG] Auto-solve complete:', solvedCount, 'solved,', failedCount, 'failed');
 
   // Add completion summary to chat

@@ -82,6 +82,8 @@ settingsBtn.addEventListener('click', () => {
     mainArea.classList.remove('hidden');
   } else {
     mainArea.classList.add('hidden');
+    // Load site config when settings opens
+    loadCurrentSiteConfig();
   }
 });
 
@@ -104,6 +106,92 @@ document.getElementById('shortAnswerToggle').addEventListener('change', async (e
 
 document.getElementById('freeApiToggle').addEventListener('change', async (e) => {
   await chrome.storage.local.set({ xolverFreeApi: e.target.checked });
+});
+
+// ===================== SITE CONFIG =====================
+let currentDomainName = null;
+
+async function getCurrentTab() {
+  if (isDetached) {
+    const allTabs = await chrome.tabs.query({ active: true });
+    let tab = allTabs.find(t => t.url && !t.url.startsWith('chrome-extension://') && !t.url.startsWith('chrome://'));
+    if (!tab) tab = allTabs.find(t => t.url && t.url.startsWith('http'));
+    return tab;
+  } else {
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    return tabs[0];
+  }
+}
+
+async function loadCurrentSiteConfig() {
+  const tab = await getCurrentTab();
+  const domainEl = document.getElementById('currentDomain');
+
+  if (tab && tab.url) {
+    try {
+      const url = new URL(tab.url);
+      currentDomainName = url.hostname;
+      domainEl.textContent = currentDomainName;
+    } catch(e) {
+      currentDomainName = null;
+      domainEl.textContent = '\u2014';
+    }
+  } else {
+    currentDomainName = null;
+    domainEl.textContent = '\u2014';
+  }
+
+  // Load stored config for this domain
+  if (currentDomainName) {
+    const data = await chrome.storage.local.get('xolverSiteConfigs');
+    const configs = data.xolverSiteConfigs || {};
+    const config = configs[currentDomainName] || {};
+    document.getElementById('questionSelector').value = config.questionSelector || '';
+    document.getElementById('optionSelector').value = config.optionSelector || '';
+    document.getElementById('optionInputSelector').value = config.optionInputSelector || '';
+  } else {
+    document.getElementById('questionSelector').value = '';
+    document.getElementById('optionSelector').value = '';
+    document.getElementById('optionInputSelector').value = '';
+  }
+}
+
+document.getElementById('saveSiteConfig').addEventListener('click', async () => {
+  if (!currentDomainName) {
+    showSystemMsg('Site alan\u0131 tespit edilemedi');
+    return;
+  }
+
+  const config = {
+    questionSelector: document.getElementById('questionSelector').value.trim(),
+    optionSelector: document.getElementById('optionSelector').value.trim(),
+    optionInputSelector: document.getElementById('optionInputSelector').value.trim(),
+  };
+
+  if (!config.questionSelector) {
+    showSystemMsg('Soru konteyneri se\u00e7icisi gerekli');
+    return;
+  }
+
+  const data = await chrome.storage.local.get('xolverSiteConfigs');
+  const configs = data.xolverSiteConfigs || {};
+  configs[currentDomainName] = config;
+  await chrome.storage.local.set({ xolverSiteConfigs: configs });
+  showSystemMsg(currentDomainName + ' ayarlar\u0131 kaydedildi \u2713');
+});
+
+document.getElementById('deleteSiteConfig').addEventListener('click', async () => {
+  if (!currentDomainName) return;
+
+  const data = await chrome.storage.local.get('xolverSiteConfigs');
+  const configs = data.xolverSiteConfigs || {};
+  delete configs[currentDomainName];
+  await chrome.storage.local.set({ xolverSiteConfigs: configs });
+
+  document.getElementById('questionSelector').value = '';
+  document.getElementById('optionSelector').value = '';
+  document.getElementById('optionInputSelector').value = '';
+  showSystemMsg(currentDomainName + ' ayarlar\u0131 silindi');
 });
 
 // ===================== CLEAR CHAT =====================
@@ -155,14 +243,14 @@ selectElementBtn.addEventListener('click', async () => {
 
   if (!tab) return;
 
-  // Inject content script
+  // Inject content script into ALL frames (iframes may contain questions)
   try {
     await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
+      target: { tabId: tab.id, allFrames: true },
       files: ['content.js']
     });
     await chrome.scripting.insertCSS({
-      target: { tabId: tab.id },
+      target: { tabId: tab.id, allFrames: true },
       files: ['content.css']
     });
   } catch (e) {
@@ -221,14 +309,14 @@ autoSolveBtn.addEventListener('click', async () => {
 
   if (!tab) return;
 
-  // Inject content script
+  // Inject content script into ALL frames (iframes may contain questions)
   try {
     await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
+      target: { tabId: tab.id, allFrames: true },
       files: ['content.js']
     });
     await chrome.scripting.insertCSS({
-      target: { tabId: tab.id },
+      target: { tabId: tab.id, allFrames: true },
       files: ['content.css']
     });
   } catch (e) {}
@@ -245,8 +333,9 @@ autoSolveBtn.addEventListener('click', async () => {
   // Add "Otomatik Çözüm" banner to chat via background storage
   chrome.runtime.sendMessage({ action: 'autoSolveStart' });
 
-  // Pass tabId explicitly so content script can forward it to background
-  chrome.tabs.sendMessage(tab.id, { action: 'autoSolve', tabId: tab.id });
+  // Pass tabId and tab hostname explicitly so content script in iframes can use it
+  const tabHostname = tab.url ? new URL(tab.url).hostname : '';
+  chrome.tabs.sendMessage(tab.id, { action: 'autoSolve', tabId: tab.id, tabHostname: tabHostname });
 });
 
 // Listen for auto-solve completion

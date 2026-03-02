@@ -68,6 +68,28 @@
             <span class="toggle-slider"></span>
           </label>
         </div>
+
+        <!-- Site CSS Selectors -->
+        <div class="site-config-section">
+          <div class="site-config-header">
+            <label>Site Ayarları</label>
+            <span id="currentDomain" class="current-domain">—</span>
+          </div>
+          <p class="site-config-hint">Mevcut site için özel CSS seçicileri tanımlayın. Boş bırakılırsa varsayılan Moodle seçicileri kullanılır.</p>
+          <div class="selector-field">
+            <input type="text" id="questionSelector" placeholder="Soru konteyneri — örn: .mcq__inner" />
+          </div>
+          <div class="selector-field">
+            <input type="text" id="optionSelector" placeholder="Cevap seçeneği — örn: .mcq__item" />
+          </div>
+          <div class="selector-field">
+            <input type="text" id="optionInputSelector" placeholder="Cevap input — örn: input.mcq__item-input" />
+          </div>
+          <div class="site-config-actions">
+            <button id="saveSiteConfig" class="btn-save">Kaydet</button>
+            <button id="deleteSiteConfig" class="btn-delete-site">Sil</button>
+          </div>
+        </div>
       </div>
     </div>
 

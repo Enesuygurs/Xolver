@@ -9,12 +9,32 @@
   let active = false;
   let hoveredEl = null;
   let tooltip = null;
+  const HIGHLIGHT_OUTLINE = '3px solid #8b5cf6';
+  const HIGHLIGHT_BG = 'rgba(139, 92, 246, 0.08)';
 
   // ===================== TOOLTIP =====================
   function createTooltip() {
     if (tooltip) return;
     tooltip = document.createElement('div');
-    tooltip.className = 'xolver-tooltip';
+    // Use inline styles so it works even inside shadow DOM frames
+    Object.assign(tooltip.style, {
+      position: 'fixed',
+      zIndex: '2147483647',
+      background: '#1a1a24',
+      color: '#e4e4e7',
+      fontFamily: "'Segoe UI', system-ui, sans-serif",
+      fontSize: '12px',
+      padding: '6px 12px',
+      borderRadius: '8px',
+      border: '1px solid #8b5cf6',
+      boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+      pointerEvents: 'none',
+      whiteSpace: 'nowrap',
+      maxWidth: '350px',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+    });
+    tooltip.setAttribute('data-xolver', 'tooltip');
     document.body.appendChild(tooltip);
   }
 
@@ -28,13 +48,13 @@
   function updateTooltip(el, x, y) {
     if (!tooltip) createTooltip();
 
-    const tag = el.tagName.toLowerCase();
+    const tag = el.tagName ? el.tagName.toLowerCase() : '?';
     const id = el.id ? `#${el.id}` : '';
-    const classes = el.classList.length > 0
+    const classes = el.classList && el.classList.length > 0
       ? '.' + Array.from(el.classList).filter(c => !c.startsWith('xolver-')).join('.')
       : '';
 
-    tooltip.innerHTML = `<span class="tag-name">${tag}</span><span class="tag-id">${id}</span><span class="tag-class">${classes}</span>`;
+    tooltip.innerHTML = `<span style="color:#8b5cf6;font-weight:700">${tag}</span><span style="color:#f59e0b">${id}</span><span style="color:#10b981">${classes}</span>`;
 
     // Position tooltip near cursor
     const offsetX = 15;
@@ -55,24 +75,42 @@
     tooltip.style.top = top + 'px';
   }
 
+  // ===================== HIGHLIGHT HELPERS (inline style for shadow DOM compat) =====================
+  function addHighlight(el) {
+    if (!el || !el.style) return;
+    el.style.outline = HIGHLIGHT_OUTLINE;
+    el.style.outlineOffset = '2px';
+    el.style.backgroundColor = HIGHLIGHT_BG;
+    el.style.cursor = 'crosshair';
+  }
+
+  function removeHighlight(el) {
+    if (!el || !el.style) return;
+    el.style.outline = '';
+    el.style.outlineOffset = '';
+    el.style.backgroundColor = '';
+    el.style.cursor = '';
+  }
+
   // ===================== HANDLERS =====================
   function onMouseMove(e) {
     if (!active) return;
 
-    const el = e.target;
+    // composedPath penetrates shadow DOM boundaries
+    const path = e.composedPath();
+    const el = path[0] || e.target;
 
     // Skip xolver elements
-    if (el.classList.contains('xolver-tooltip') || el.classList.contains('xolver-highlight')) {
-      return;
-    }
+    if (el.getAttribute && el.getAttribute('data-xolver')) return;
+    if (el === tooltip) return;
 
     // Remove previous highlight
     if (hoveredEl && hoveredEl !== el) {
-      hoveredEl.classList.remove('xolver-highlight');
+      removeHighlight(hoveredEl);
     }
 
     hoveredEl = el;
-    el.classList.add('xolver-highlight');
+    addHighlight(el);
     updateTooltip(el, e.clientX, e.clientY);
   }
 
@@ -83,19 +121,23 @@
     e.stopPropagation();
     e.stopImmediatePropagation();
 
-    const el = e.target;
+    const path = e.composedPath();
+    const el = path[0] || e.target;
 
     // Skip xolver UI elements
-    if (el.classList.contains('xolver-tooltip')) return;
+    if (el.getAttribute && el.getAttribute('data-xolver')) return;
+    if (el === tooltip) return;
 
     // Clean up highlight before getting HTML
-    el.classList.remove('xolver-highlight');
+    removeHighlight(el);
 
     // Get full outer HTML
     const html = el.outerHTML;
-    const tagInfo = el.tagName.toLowerCase() +
+    const tagInfo = (el.tagName ? el.tagName.toLowerCase() : 'element') +
       (el.id ? '#' + el.id : '') +
-      (el.className ? '.' + el.className.split(' ').filter(c => !c.startsWith('xolver-')).join('.') : '');
+      (el.className && typeof el.className === 'string'
+        ? '.' + el.className.split(' ').filter(c => !c.startsWith('xolver-')).join('.')
+        : '');
 
     // Send to extension
     chrome.runtime.sendMessage({
@@ -118,7 +160,6 @@
   function startSelector() {
     if (active) return;
     active = true;
-    document.body.classList.add('xolver-selecting');
     document.addEventListener('mousemove', onMouseMove, true);
     document.addEventListener('click', onClick, true);
     document.addEventListener('keydown', onKeyDown, true);
@@ -127,13 +168,12 @@
 
   function stopSelector() {
     active = false;
-    document.body.classList.remove('xolver-selecting');
     document.removeEventListener('mousemove', onMouseMove, true);
     document.removeEventListener('click', onClick, true);
     document.removeEventListener('keydown', onKeyDown, true);
 
     if (hoveredEl) {
-      hoveredEl.classList.remove('xolver-highlight');
+      removeHighlight(hoveredEl);
       hoveredEl = null;
     }
     removeTooltip();
@@ -146,7 +186,7 @@
     } else if (msg.action === 'stopSelector') {
       stopSelector();
     } else if (msg.action === 'autoSolve') {
-      autoSolveQuestions(msg.tabId);
+      autoSolveQuestions(msg.tabId, msg.tabHostname);
     } else if (msg.action === 'autoSolveAnswer') {
       console.log('[Xolver] Received answer for question', msg.questionIndex, ':', msg.answer);
       applyAnswer(msg.questionIndex, msg.answer);
@@ -165,10 +205,132 @@
 
   let detectedQuestions = [];
   let autoSolveTabId = null;
+  let currentSiteConfig = null;
 
-  function findQuestions() {
+  // Normalize user-entered selectors: auto-prepend . for bare class names
+  function normalizeSelector(sel) {
+    if (!sel) return sel;
+    sel = sel.trim();
+    // If it already starts with CSS selector syntax, leave as-is
+    if (/^[.#\[*:>+~]/.test(sel) || /^[a-z]+[.#\[]/i.test(sel)) return sel;
+    // If it looks like a bare class name (letters, numbers, hyphens, underscores), add dot
+    if (/^[a-zA-Z_][a-zA-Z0-9_-]*$/.test(sel)) {
+      console.log('[Xolver] Auto-fixing selector: "' + sel + '" -> ".' + sel + '"');
+      return '.' + sel;
+    }
+    return sel;
+  }
+
+  // Deep query: search through Shadow DOM and same-origin iframes
+  function deepQuerySelectorAll(selector, root) {
+    root = root || document;
+    let results = Array.from(root.querySelectorAll(selector));
+
+    // Search inside shadow roots
+    const allElements = root.querySelectorAll('*');
+    for (const el of allElements) {
+      if (el.shadowRoot) {
+        results = results.concat(deepQuerySelectorAll(selector, el.shadowRoot));
+      }
+    }
+
+    // Search inside same-origin iframes (only from document, not shadow roots)
+    if (root === document || root instanceof Document) {
+      const iframes = root.querySelectorAll('iframe');
+      for (const iframe of iframes) {
+        try {
+          const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+          if (iframeDoc) {
+            results = results.concat(deepQuerySelectorAll(selector, iframeDoc));
+          }
+        } catch (e) {
+          // Cross-origin iframe, skip
+        }
+      }
+    }
+
+    return results;
+  }
+
+  async function findQuestions(tabHostname) {
+    // Try to load custom config for this site
+    const hostname = window.location.hostname;
+    console.log('[Xolver] findQuestions called on frame:', hostname, '| tabHostname:', tabHostname, '| isTop:', window === window.top, '| URL:', window.location.href.substring(0, 120));
+    try {
+      const data = await chrome.storage.local.get('xolverSiteConfigs');
+      const configs = data.xolverSiteConfigs || {};
+      console.log('[Xolver] Saved site configs:', JSON.stringify(Object.keys(configs)));
+      
+      // Try matching: 1) exact hostname, 2) tab hostname (for iframes), 3) any config whose selectors match
+      const hostnamesToTry = [hostname];
+      if (tabHostname && tabHostname !== hostname) hostnamesToTry.push(tabHostname);
+      
+      for (const h of hostnamesToTry) {
+        const config = configs[h];
+        if (config && config.questionSelector) {
+          const normConfig = {
+            questionSelector: normalizeSelector(config.questionSelector),
+            optionSelector: normalizeSelector(config.optionSelector),
+            optionInputSelector: normalizeSelector(config.optionInputSelector),
+          };
+          // Retry up to 8 times with 1.5s delay for dynamically loaded content
+          for (let attempt = 0; attempt < 8; attempt++) {
+            // First try normal query, then deep query (shadow DOM + nested iframes)
+            let elements = document.querySelectorAll(normConfig.questionSelector);
+            if (elements.length === 0) {
+              elements = deepQuerySelectorAll(normConfig.questionSelector);
+              if (elements.length > 0) {
+                console.log('[Xolver] Found', elements.length, 'via DEEP search (shadow/iframe)');
+              }
+            }
+            if (elements.length > 0) {
+              console.log('[Xolver] Found', elements.length, 'questions with custom selector:', normConfig.questionSelector, 'for', h, '(frame:', hostname, ', attempt:', attempt, ')');
+              currentSiteConfig = normConfig;
+              return Array.from(elements);
+            }
+            if (attempt < 7) {
+              if (attempt === 0) {
+                // On first attempt, log iframe/shadow stats for debugging
+                const iframeCount = document.querySelectorAll('iframe').length;
+                const shadowCount = Array.from(document.querySelectorAll('*')).filter(el => el.shadowRoot).length;
+                console.log('[Xolver] Frame stats — iframes:', iframeCount, 'shadow roots:', shadowCount, 'body children:', document.body?.children?.length || 0);
+              }
+              console.log('[Xolver] Selector "' + normConfig.questionSelector + '" found 0 elements, retrying in 1.5s... (attempt', attempt + 1, '/ 8)');
+              await new Promise(r => setTimeout(r, 1500));
+            }
+          }
+          console.log('[Xolver] Custom selector "' + normConfig.questionSelector + '" found 0 elements after 8 attempts (config:', h, ', frame:', hostname, ')');
+        }
+      }
+      
+      // Last resort: try ALL saved configs to see if any match this page
+      for (const [configHost, config] of Object.entries(configs)) {
+        if (hostnamesToTry.includes(configHost)) continue; // already tried
+        if (config && config.questionSelector) {
+          const normSel = normalizeSelector(config.questionSelector);
+          let elements = deepQuerySelectorAll(normSel);
+          if (elements.length > 0) {
+            console.log('[Xolver] Found', elements.length, 'questions with config from', configHost, 'on frame', hostname);
+            currentSiteConfig = {
+              questionSelector: normSel,
+              optionSelector: normalizeSelector(config.optionSelector),
+              optionInputSelector: normalizeSelector(config.optionInputSelector),
+            };
+            return Array.from(elements);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[Xolver] Error loading site config:', e);
+    }
+
+    // Fall back to built-in selectors
+    currentSiteConfig = null;
     for (const selector of QUESTION_SELECTORS) {
-      const elements = document.querySelectorAll(selector);
+      let elements = document.querySelectorAll(selector);
+      if (elements.length === 0) {
+        elements = deepQuerySelectorAll(selector);
+      }
       if (elements.length > 0) {
         console.log('[Xolver] Found', elements.length, 'questions with selector:', selector);
         return Array.from(elements);
@@ -177,16 +339,38 @@
     return [];
   }
 
-  async function autoSolveQuestions(tabId) {
+  async function autoSolveQuestions(tabId, tabHostname) {
     autoSolveTabId = tabId;
-    detectedQuestions = findQuestions();
 
-    if (detectedQuestions.length === 0) {
-      console.log('[Xolver] No questions found on page');
-      chrome.runtime.sendMessage({ action: 'autoSolveNoQuestions' });
-      chrome.runtime.sendMessage({ action: 'autoSolveStatus', status: 'noQuestions' });
+    // Skip frames that clearly won't have quiz content (login iframes, etc.)
+    const hostname = window.location.hostname;
+    if (tabHostname && hostname !== tabHostname && window !== window.top) {
+      console.log('[Xolver] Skipping irrelevant iframe:', hostname, '(tab is', tabHostname, ')');
       return;
     }
+
+    detectedQuestions = await findQuestions(tabHostname);
+
+    if (detectedQuestions.length === 0) {
+      console.log('[Xolver] No questions found in frame:', hostname, window.location.pathname);
+      // Only report "no questions" from the top frame to avoid duplicate messages from iframes
+      if (window === window.top) {
+        // Wait long enough for iframe retries to complete (8 retries * 1.5s + buffer)
+        await new Promise(r => setTimeout(r, 15000));
+        chrome.runtime.sendMessage({ action: 'autoSolveNoQuestions' });
+        chrome.runtime.sendMessage({ action: 'autoSolveStatus', status: 'noQuestions' });
+      }
+      return;
+    }
+
+    // Only the first frame to find questions should send to background
+    // Use a storage flag to coordinate between frames
+    const flagKey = '__xolverAutoSolveSent_' + tabId;
+    if (window[flagKey]) {
+      console.log('[Xolver] Another instance already sent questions, skipping');
+      return;
+    }
+    window[flagKey] = true;
 
     console.log('[Xolver] Starting auto-solve for', detectedQuestions.length, 'questions, tabId:', tabId);
 
@@ -232,6 +416,26 @@
     let matched = false;
     const letterMap = { 'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5 };
 
+    // Strategy 0: Custom site selectors
+    if (currentSiteConfig && currentSiteConfig.optionSelector && answerLetter && letterMap[answerLetter] !== undefined) {
+      const options = el.querySelectorAll(currentSiteConfig.optionSelector);
+      const idx = letterMap[answerLetter];
+      if (options[idx]) {
+        const inputSel = currentSiteConfig.optionInputSelector || 'input[type="radio"], input[type="checkbox"]';
+        const input = options[idx].querySelector(inputSel);
+        if (input) {
+          clickInput(input);
+          matched = true;
+          console.log('[Xolver] Matched by custom selector:', answerLetter, '-> option index', idx);
+        } else {
+          // Some frameworks use click on the container element directly
+          options[idx].click();
+          matched = true;
+          console.log('[Xolver] Matched by custom selector (container click):', answerLetter, '-> option index', idx);
+        }
+      }
+    }
+
     // Get all real radio/checkbox inputs (exclude Moodle's hidden clear-choice)
     const allInputs = el.querySelectorAll('input[type="radio"], input[type="checkbox"]');
     const realInputs = Array.from(allInputs).filter(inp => {
@@ -241,7 +445,7 @@
     console.log('[Xolver] Found', realInputs.length, 'real inputs in question', questionIndex + 1);
 
     // Strategy 1: Match by letter index (A=0, B=1, C=2, D=3...)
-    if (answerLetter && letterMap[answerLetter] !== undefined) {
+    if (!matched && answerLetter && letterMap[answerLetter] !== undefined) {
       const idx = letterMap[answerLetter];
       if (realInputs[idx]) {
         clickInput(realInputs[idx]);
