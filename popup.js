@@ -75,8 +75,15 @@ if (isDetached) {
 // ===================== SETTINGS =====================
 const mainArea = document.querySelector('.main-area');
 
+const homeBtn = document.getElementById('homeBtn');
 const siteConfigBtn = document.getElementById('siteConfigBtn');
 const siteConfigPanel = document.getElementById('siteConfigPanel');
+const tabBtns = document.querySelectorAll('.tab-btn');
+
+function setActiveTab(activeBtn) {
+  tabBtns.forEach(btn => btn.classList.remove('active'));
+  activeBtn.classList.add('active');
+}
 
 function closeAllPanels() {
   settingsPanel.classList.add('hidden');
@@ -84,12 +91,20 @@ function closeAllPanels() {
   mainArea.classList.remove('hidden');
 }
 
+homeBtn.addEventListener('click', () => {
+  closeAllPanels();
+  setActiveTab(homeBtn);
+});
+
 settingsBtn.addEventListener('click', () => {
   const wasHidden = settingsPanel.classList.contains('hidden');
   closeAllPanels();
   if (wasHidden) {
     settingsPanel.classList.remove('hidden');
     mainArea.classList.add('hidden');
+    setActiveTab(settingsBtn);
+  } else {
+    setActiveTab(homeBtn);
   }
 });
 
@@ -100,6 +115,9 @@ siteConfigBtn.addEventListener('click', () => {
     siteConfigPanel.classList.remove('hidden');
     mainArea.classList.add('hidden');
     loadCurrentSiteConfig();
+    setActiveTab(siteConfigBtn);
+  } else {
+    setActiveTab(homeBtn);
   }
 });
 
@@ -109,6 +127,7 @@ saveApiKeyBtn.addEventListener('click', async () => {
   await chrome.storage.local.set({ geminiApiKey: key });
   showSystemMsg('API anahtarı kaydedildi ✓');
   closeAllPanels();
+  setActiveTab(homeBtn);
 });
 
 modelSelect.addEventListener('change', async () => {
