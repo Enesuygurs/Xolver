@@ -554,6 +554,10 @@ body.popup-mode {
   cursor: pointer;
   transition: background 0.2s;
   flex-shrink: 0;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .send-btn:hover {
