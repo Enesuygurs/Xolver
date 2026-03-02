@@ -131,6 +131,7 @@ async function callGemini(html, userText) {
 
     // Notify popup
     chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
+    focusXolverWindow();
 
   } catch (err) {
     // Remove failed user message from API history
@@ -145,6 +146,19 @@ async function callGemini(html, userText) {
   }
 }
 
+// ===================== FOCUS XOLVER WINDOW =====================
+async function focusXolverWindow() {
+  const data = await chrome.storage.local.get('xolverWindowId');
+  if (data.xolverWindowId) {
+    try {
+      await chrome.windows.update(data.xolverWindowId, { focused: true });
+    } catch (e) {
+      // Window may have been closed
+      await chrome.storage.local.remove('xolverWindowId');
+    }
+  }
+}
+
 // ===================== MESSAGE HANDLER =====================
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.action === 'elementSelected') {
@@ -154,6 +168,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     chrome.storage.local.set({
       xolverLastSelected: { html: msg.html, tagInfo: msg.tagInfo }
     });
+    // Bring Xolver window to front
+    focusXolverWindow();
   }
 
   if (msg.action === 'sendMessage') {

@@ -49,13 +49,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Detect if running as a standalone window (not popup)
 const isDetached = new URLSearchParams(window.location.search).has('detached');
 
-document.getElementById('pinBtn').addEventListener('click', () => {
-  chrome.windows.create({
+document.getElementById('pinBtn').addEventListener('click', async () => {
+  const win = await chrome.windows.create({
     url: chrome.runtime.getURL('popup.html?detached=1'),
     type: 'popup',
     width: 420,
-    height: 600
+    height: 600,
+    focused: true
   });
+  // Store window ID so background can refocus it
+  await chrome.storage.local.set({ xolverWindowId: win.id });
   window.close();
 });
 
