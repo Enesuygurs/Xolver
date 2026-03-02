@@ -24,6 +24,11 @@
             <path d="M12 2v8m-4-4l4 4 4-4M4 14h16M6 14v4a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-4"/>
           </svg>
         </button>
+        <button id="siteConfigBtn" class="icon-btn" title="Site Ayarları">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+          </svg>
+        </button>
         <button id="settingsBtn" class="icon-btn" title="Ayarlar">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
@@ -68,27 +73,29 @@
             <span class="toggle-slider"></span>
           </label>
         </div>
+      </div>
+    </div>
 
-        <!-- Site CSS Selectors -->
-        <div class="site-config-section">
-          <div class="site-config-header">
-            <label>Site Ayarları</label>
-            <span id="currentDomain" class="current-domain">—</span>
-          </div>
-          <p class="site-config-hint">Mevcut site için özel CSS seçicileri tanımlayın. Boş bırakılırsa varsayılan Moodle seçicileri kullanılır.</p>
-          <div class="selector-field">
-            <input type="text" id="questionSelector" placeholder="Soru konteyneri — örn: .mcq__inner" />
-          </div>
-          <div class="selector-field">
-            <input type="text" id="optionSelector" placeholder="Cevap seçeneği — örn: .mcq__item" />
-          </div>
-          <div class="selector-field">
-            <input type="text" id="optionInputSelector" placeholder="Cevap input — örn: input.mcq__item-input" />
-          </div>
-          <div class="site-config-actions">
-            <button id="saveSiteConfig" class="btn-save">Kaydet</button>
-            <button id="deleteSiteConfig" class="btn-delete-site">Sil</button>
-          </div>
+    <!-- Site Config Panel -->
+    <div id="siteConfigPanel" class="settings-panel hidden">
+      <div class="settings-content">
+        <div class="site-config-header">
+          <label>Site Ayarları</label>
+          <span id="currentDomain" class="current-domain">—</span>
+        </div>
+        <p class="site-config-hint">Mevcut site için özel CSS seçicileri tanımlayın. Boş bırakılırsa varsayılan Moodle seçicileri kullanılır.</p>
+        <div class="selector-field">
+          <input type="text" id="questionSelector" placeholder="Soru konteyneri — örn: .mcq__inner" />
+        </div>
+        <div class="selector-field">
+          <input type="text" id="optionSelector" placeholder="Cevap seçeneği — örn: .mcq__item" />
+        </div>
+        <div class="selector-field">
+          <input type="text" id="optionInputSelector" placeholder="Cevap input — örn: input.mcq__item-input" />
+        </div>
+        <div class="site-config-actions">
+          <button id="saveSiteConfig" class="btn-save">Kaydet</button>
+          <button id="deleteSiteConfig" class="btn-delete-site">Sil</button>
         </div>
       </div>
     </div>

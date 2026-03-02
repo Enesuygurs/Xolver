@@ -75,14 +75,30 @@ if (isDetached) {
 // ===================== SETTINGS =====================
 const mainArea = document.querySelector('.main-area');
 
+const siteConfigBtn = document.getElementById('siteConfigBtn');
+const siteConfigPanel = document.getElementById('siteConfigPanel');
+
+function closeAllPanels() {
+  settingsPanel.classList.add('hidden');
+  siteConfigPanel.classList.add('hidden');
+  mainArea.classList.remove('hidden');
+}
+
 settingsBtn.addEventListener('click', () => {
-  const isHidden = settingsPanel.classList.toggle('hidden');
-  // Hide main area when settings are open
-  if (isHidden) {
-    mainArea.classList.remove('hidden');
-  } else {
+  const wasHidden = settingsPanel.classList.contains('hidden');
+  closeAllPanels();
+  if (wasHidden) {
+    settingsPanel.classList.remove('hidden');
     mainArea.classList.add('hidden');
-    // Load site config when settings opens
+  }
+});
+
+siteConfigBtn.addEventListener('click', () => {
+  const wasHidden = siteConfigPanel.classList.contains('hidden');
+  closeAllPanels();
+  if (wasHidden) {
+    siteConfigPanel.classList.remove('hidden');
+    mainArea.classList.add('hidden');
     loadCurrentSiteConfig();
   }
 });
@@ -92,8 +108,7 @@ saveApiKeyBtn.addEventListener('click', async () => {
   if (!key) return;
   await chrome.storage.local.set({ geminiApiKey: key });
   showSystemMsg('API anahtarı kaydedildi ✓');
-  settingsPanel.classList.add('hidden');
-  mainArea.classList.remove('hidden');
+  closeAllPanels();
 });
 
 modelSelect.addEventListener('change', async () => {
