@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Xolver</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="logo">
+        <span class="logo-x">X</span><span class="logo-text">olver</span>
+      </div>
+      <div class="header-actions">
+        <button id="settingsBtn" class="icon-btn" title="Ayarlar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Settings Panel -->
+    <div id="settingsPanel" class="settings-panel hidden">
+      <div class="settings-content">
+        <label for="apiKeyInput">Gemini API Key</label>
+        <div class="api-key-row">
+          <input type="password" id="apiKeyInput" placeholder="API anahtarınızı girin..." />
+          <button id="saveApiKey" class="btn-save">Kaydet</button>
+        </div>
+        <p class="api-hint">
+          <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a>'dan API key alabilirsiniz.
+        </p>
+        <label for="modelSelect" style="margin-top: 10px;">Model</label>
+        <select id="modelSelect">
+          <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Main Area -->
+    <div class="main-area">
+      <!-- Select Element Button -->
+      <button id="selectElementBtn" class="select-btn">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/>
+          <path d="M13 13l6 6"/>
+        </svg>
+        Element Seç
+      </button>
+
+      <!-- Selected Element Preview -->
+      <div id="selectedPreview" class="selected-preview hidden">
+        <div class="preview-header">
+          <span class="preview-tag" id="previewTag"></span>
+          <button id="clearSelection" class="icon-btn-small" title="Temizle">✕</button>
+        </div>
+        <pre id="previewCode" class="preview-code"></pre>
+      </div>
+
+      <!-- Chat Area -->
+      <div id="chatArea" class="chat-area">
+        <div id="chatMessages" class="chat-messages">
+          <div class="welcome-message">
+            <div class="welcome-icon">🎯</div>
+            <p>Sayfadan bir element seçin, Xolver otomatik olarak soruyu çözecek!</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Input Area -->
+      <div class="input-area">
+        <textarea id="userInput" placeholder="Ek mesaj yazın (opsiyonel)..." rows="1"></textarea>
+        <button id="sendBtn" class="send-btn" title="Gönder">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
