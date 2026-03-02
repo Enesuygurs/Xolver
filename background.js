@@ -205,15 +205,22 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
   if (msg.action === 'autoSolveAllQuestions') {
     // Receive all questions at once, process sequentially
+    autoSolveCancelled = false;
     const tabId = msg.tabId || sender.tab?.id;
     console.log('[Xolver BG] autoSolveAllQuestions received,', msg.questions.length, 'questions, tabId:', tabId);
     processAutoSolveQueue(msg.questions, msg.totalQuestions, tabId);
+  }
+
+  if (msg.action === 'autoSolveCancel') {
+    console.log('[Xolver BG] Auto-solve cancelled by user');
+    autoSolveCancelled = true;
   }
 });
 
 // ===================== AUTO-SOLVE SEQUENTIAL QUEUE =====================
 const MAX_RETRIES = 2;
-const MAX_RETRY_WAIT = 20000; // Never wait more than 20 seconds
+const MAX_RETRY_WAIT = 20000;
+let autoSolveCancelled = false;
 
 async function processAutoSolveQueue(questions, totalQuestions, tabId) {
   const data = await chrome.storage.local.get(['geminiApiKey', 'geminiModel']);
@@ -234,6 +241,17 @@ async function processAutoSolveQueue(questions, totalQuestions, tabId) {
   let failedCount = 0;
 
   for (let i = 0; i < questions.length; i++) {
+    // Check cancellation
+    if (autoSolveCancelled) {
+      console.log('[Xolver BG] Auto-solve cancelled at question', i + 1);
+      const msgs = await getChatMessages();
+      msgs.push({ role: 'system', text: '⛔ Otomatik çözüm iptal edildi' });
+      await saveChatMessages(msgs);
+      chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
+      chrome.runtime.sendMessage({ action: 'autoSolveStatus', status: 'done', solved: solvedCount, failed: failedCount }).catch(() => {});
+      return;
+    }
+
     const q = questions[i];
     console.log('[Xolver BG] Processing question', q.questionIndex + 1, '/', totalQuestions);
 
@@ -248,9 +266,14 @@ async function processAutoSolveQueue(questions, totalQuestions, tabId) {
     if (i < questions.length - 1) {
       const settings = await chrome.storage.local.get('xolverFreeApi');
       const isFreeApi = settings.xolverFreeApi !== false; // default true
-      const delay = isFreeApi ? 13000 : 1000; // 13s for free tier, 1s for paid
+      const delay = isFreeApi ? 13000 : 1000;
       console.log('[Xolver BG] Waiting', delay, 'ms before next question (freeApi:', isFreeApi, ')');
-      await new Promise(r => setTimeout(r, delay));
+      // Wait in 1s chunks so cancellation is responsive
+      const chunks = Math.ceil(delay / 1000);
+      for (let c = 0; c < chunks; c++) {
+        if (autoSolveCancelled) break;
+        await new Promise(r => setTimeout(r, 1000));
+      }
     }
   }
 

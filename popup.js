@@ -190,8 +190,22 @@ selectElementBtn.addEventListener('click', async () => {
 
 // ===================== AUTO SOLVE =====================
 const autoSolveBtn = document.getElementById('autoSolveBtn');
+let isAutoSolving = false;
 
 autoSolveBtn.addEventListener('click', async () => {
+  // If already solving, cancel
+  if (isAutoSolving) {
+    chrome.runtime.sendMessage({ action: 'autoSolveCancel' });
+    isAutoSolving = false;
+    autoSolveBtn.classList.remove('active');
+    autoSolveBtn.innerHTML = `
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+      </svg>
+      Otomatik Çöz`;
+    return;
+  }
+
   let tab;
 
   if (isDetached) {
@@ -218,12 +232,13 @@ autoSolveBtn.addEventListener('click', async () => {
   } catch (e) {}
 
   // Tell content script to auto-detect and solve questions
+  isAutoSolving = true;
   autoSolveBtn.classList.add('active');
   autoSolveBtn.innerHTML = `
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+      <path d="M18 6L6 18"/><path d="M6 6l12 12"/>
     </svg>
-    Çözülüyor...`;
+    İptal Et`;
 
   // Add "Otomatik Çözüm" banner to chat via background storage
   chrome.runtime.sendMessage({ action: 'autoSolveStart' });
@@ -236,6 +251,7 @@ autoSolveBtn.addEventListener('click', async () => {
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.action === 'autoSolveStatus') {
     if (msg.status === 'done') {
+      isAutoSolving = false;
       autoSolveBtn.classList.remove('active');
       autoSolveBtn.innerHTML = `
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -246,6 +262,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         ? `✓ ${msg.solved || 0} soru çözüldü, ${msg.failed} başarısız`
         : `✓ ${msg.solved || 0} soru çözüldü`);
     } else if (msg.status === 'noQuestions') {
+      isAutoSolving = false;
       autoSolveBtn.classList.remove('active');
       autoSolveBtn.innerHTML = `
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
