@@ -65,8 +65,16 @@ if (isDetached) {
 }
 
 // ===================== SETTINGS =====================
+const mainArea = document.querySelector('.main-area');
+
 settingsBtn.addEventListener('click', () => {
-  settingsPanel.classList.toggle('hidden');
+  const isHidden = settingsPanel.classList.toggle('hidden');
+  // Hide main area when settings are open
+  if (isHidden) {
+    mainArea.classList.remove('hidden');
+  } else {
+    mainArea.classList.add('hidden');
+  }
 });
 
 saveApiKeyBtn.addEventListener('click', async () => {
@@ -75,6 +83,7 @@ saveApiKeyBtn.addEventListener('click', async () => {
   await chrome.storage.local.set({ geminiApiKey: key });
   showSystemMsg('API anahtarı kaydedildi ✓');
   settingsPanel.classList.add('hidden');
+  mainArea.classList.remove('hidden');
 });
 
 modelSelect.addEventListener('change', async () => {

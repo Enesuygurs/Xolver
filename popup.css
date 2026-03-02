@@ -64,15 +64,12 @@ body {
 .settings-panel {
   background: #1a1a24;
   border-bottom: 1px solid #2a2a35;
-  overflow: hidden;
-  transition: max-height 0.3s ease, padding 0.3s ease;
-  max-height: 250px;
+  overflow-y: auto;
+  flex: 1;
 }
 
 .settings-panel.hidden {
-  max-height: 0;
-  padding: 0 16px;
-  border-bottom: none;
+  display: none;
 }
 
 .settings-content {
