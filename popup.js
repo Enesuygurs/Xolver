@@ -252,7 +252,7 @@ autoSolveBtn.addEventListener('click', async () => {
 // Listen for auto-solve completion
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.action === 'autoSolveStatus') {
-    if (msg.status === 'done') {
+    if (msg.status === 'done' || msg.status === 'noQuestions') {
       isAutoSolving = false;
       isLoading = false;
       autoSolveBtn.classList.remove('active');
@@ -262,20 +262,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         </svg>
         Otomatik Çöz`;
       renderChatFromStorage();
-      showSystemMsg(msg.failed > 0
-        ? `✓ ${msg.solved || 0} soru çözüldü, ${msg.failed} başarısız`
-        : `✓ ${msg.solved || 0} soru çözüldü`);
-    } else if (msg.status === 'noQuestions') {
-      isAutoSolving = false;
-      isLoading = false;
-      autoSolveBtn.classList.remove('active');
-      autoSolveBtn.innerHTML = `
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-        </svg>
-        Otomatik Çöz`;
-      renderChatFromStorage();
-      showSystemMsg('⚠ Sayfada soru bulunamadı');
     }
   }
 });

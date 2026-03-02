@@ -183,6 +183,7 @@
 
     if (detectedQuestions.length === 0) {
       console.log('[Xolver] No questions found on page');
+      chrome.runtime.sendMessage({ action: 'autoSolveNoQuestions' });
       chrome.runtime.sendMessage({ action: 'autoSolveStatus', status: 'noQuestions' });
       return;
     }
