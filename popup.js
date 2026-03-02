@@ -506,7 +506,7 @@ function addMessageEl(role, text) {
 
   if (role === 'autosolve-banner') {
     div.classList.add('msg', 'msg-autosolve-banner');
-    div.textContent = text;
+    div.innerHTML = text;
   } else if (role === 'system') {
     div.classList.add('msg', 'msg-system');
     div.textContent = text;
