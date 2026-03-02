@@ -172,10 +172,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.action === 'elementSelected') {
     // Element selected from content script — call Gemini in background
     callGemini(msg.html, '');
-    // Store last selected HTML/tag for preview
+    // Store last selected HTML/tag for preview and clear selector state
     chrome.storage.local.set({
       xolverLastSelected: { html: msg.html, tagInfo: msg.tagInfo }
     });
+    chrome.storage.local.remove('xolverSelectorActive');
     // Bring Xolver window to front
     focusXolverWindow();
   }
