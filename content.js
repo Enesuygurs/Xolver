@@ -341,12 +341,24 @@
 
   async function autoSolveQuestions(tabId, tabHostname) {
     autoSolveTabId = tabId;
+    const isTopFrame = window === window.top;
+    const flagKey = '__xolverAutoSolveSent_' + tabId;
 
     // Skip frames that clearly won't have quiz content (login iframes, etc.)
     const hostname = window.location.hostname;
-    if (tabHostname && hostname !== tabHostname && window !== window.top) {
+    if (tabHostname && hostname !== tabHostname && !isTopFrame) {
       console.log('[Xolver] Skipping irrelevant iframe:', hostname, '(tab is', tabHostname, ')');
       return;
+    }
+
+    // Top frame resets the shared flag at the start of each new solve attempt
+    if (isTopFrame) {
+      try { window.top[flagKey] = false; } catch(e) { window[flagKey] = false; }
+    }
+
+    // Iframes wait briefly so the top frame gets priority (top frame does deep search covering iframes too)
+    if (!isTopFrame) {
+      await new Promise(r => setTimeout(r, 400));
     }
 
     detectedQuestions = await findQuestions(tabHostname);
@@ -354,7 +366,7 @@
     if (detectedQuestions.length === 0) {
       console.log('[Xolver] No questions found in frame:', hostname, window.location.pathname);
       // Only report "no questions" from the top frame to avoid duplicate messages from iframes
-      if (window === window.top) {
+      if (isTopFrame) {
         // Wait long enough for iframe retries to complete (8 retries * 1.5s + buffer)
         await new Promise(r => setTimeout(r, 15000));
         chrome.runtime.sendMessage({ action: 'autoSolveNoQuestions' });
@@ -363,14 +375,17 @@
       return;
     }
 
-    // Only the first frame to find questions should send to background
-    // Use a storage flag to coordinate between frames
-    const flagKey = '__xolverAutoSolveSent_' + tabId;
-    if (window[flagKey]) {
-      console.log('[Xolver] Another instance already sent questions, skipping');
+    // Check shared flag via window.top (same-origin frames share access)
+    let alreadySent = false;
+    try { alreadySent = window.top[flagKey]; } catch(e) { alreadySent = window[flagKey]; }
+
+    if (alreadySent) {
+      console.log('[Xolver] Another frame already sent questions, skipping');
       return;
     }
-    window[flagKey] = true;
+
+    // Set shared flag to prevent other frames from also sending
+    try { window.top[flagKey] = true; } catch(e) { window[flagKey] = true; }
 
     console.log('[Xolver] Starting auto-solve for', detectedQuestions.length, 'questions, tabId:', tabId);
 
