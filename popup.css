@@ -158,15 +158,17 @@ body.popup-mode {
 
 #modelSelect {
   width: 100%;
-  padding: 8px 12px;
+  padding: 8px 36px 8px 12px;
   border-radius: 8px;
   border: 1px solid #2a2a35;
-  background: #0f0f13;
+  background: #0f0f13 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23a1a1aa' d='M6 8L1 3h10z'/%3E%3C/svg%3E") no-repeat right 12px center;
   color: #e4e4e7;
   font-size: 13px;
   outline: none;
   cursor: pointer;
   margin-top: 2px;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 #modelSelect:focus {
