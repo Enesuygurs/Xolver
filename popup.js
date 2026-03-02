@@ -65,6 +65,9 @@ document.getElementById('pinBtn').addEventListener('click', async () => {
 // Hide pin button if already detached
 if (isDetached) {
   document.getElementById('pinBtn').style.display = 'none';
+} else {
+  // In popup mode, use fixed dimensions
+  document.body.classList.add('popup-mode');
 }
 
 // ===================== SETTINGS =====================

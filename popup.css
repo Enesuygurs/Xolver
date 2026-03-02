@@ -6,12 +6,18 @@
 }
 
 body {
-  width: 400px;
-  height: 560px;
+  width: 100%;
+  height: 100vh;
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
   background: #0f0f13;
   color: #e4e4e7;
   overflow: hidden;
+}
+
+/* Fixed size only when running as popup */
+body.popup-mode {
+  width: 400px;
+  height: 560px;
 }
 
 .container {
