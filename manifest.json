@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Xolver",
   "version": "1.0.0",
-  "description": "Gemini AI ile soru çözen Chrome eklentisi",
+  "description": "A Chrome extension that solves quiz questions using Google Gemini AI",
   "permissions": [
     "activeTab",
     "tabs",
@@ -36,7 +36,6 @@
       "description": "Element seçme modunu başlat"
     }
   },
-  "content_scripts": [],
   "web_accessible_resources": [
     {
       "resources": ["src/content.css"],
