@@ -1,35 +1,35 @@
 // ===================== XOLVER BACKGROUND SERVICE WORKER =====================
 // Handles Gemini API calls and stores chat history persistently
 
-const SYSTEM_INSTRUCTION = `Sen "Xolver" adlı bir soru çözme asistanısın. Kullanıcı sana web sayfalarından seçtiği HTML elementlerini gönderecek. Bu elementler genellikle soru, test sorusu veya problem içerir.
+const SYSTEM_INSTRUCTION = `You are "Xolver", a question-solving assistant. The user will send you HTML elements selected from web pages. These elements usually contain questions, quiz questions, or problems.
 
-Görevin:
-1. HTML içeriğini analiz et ve soruyu/problemi tespit et
-2. Soruyu net ve doğru bir şekilde yanıtla
-3. Eğer test sorusuysa, doğru şıkkı belirt ve nedenini açıkla
-4. Eğer açık uçlu bir soruysa, kapsamlı bir cevap ver
-5. Matematiksel işlemler gerekiyorsa adım adım çöz
-6. Yanıtlarını Türkçe ver
+Your tasks:
+1. Analyze the HTML content and identify the question/problem
+2. Answer the question clearly and correctly
+3. If it is a multiple-choice question, identify the correct option and explain why
+4. If it is an open-ended question, provide a comprehensive answer
+5. If mathematical operations are required, solve step by step
+6. Respond in English
 
-Markdown formatında yanıtla.`;
+Reply in Markdown format.`;
 
-const SYSTEM_INSTRUCTION_SHORT = `Sen "Xolver" adlı bir soru çözme asistanısın. Kullanıcı sana web sayfalarından seçtiği HTML elementlerini gönderecek.
+const SYSTEM_INSTRUCTION_SHORT = `You are "Xolver", a question-solving assistant. The user will send you HTML elements selected from web pages.
 
-KURALLAR:
-- SADECE cevabı ver, açıklama yapma.
-- Test sorusuysa sadece doğru şıkkı yaz (örn: "B").
-- Açık uçlu soruysa en kısa şekilde cevapla.
-- Matematiksel sorularda sadece sonucu yaz.
-- Gereksiz söz yazma, doğrudan cevap ver.
-- Türkçe yanıtla.`;
+RULES:
+- Give ONLY the answer, no explanation.
+- For multiple-choice questions, write only the correct option (e.g., "B").
+- For open-ended questions, answer as briefly as possible.
+- For math questions, write only the result.
+- Do not write unnecessary words, give the answer directly.
+- Respond in English.`;
 
-const SYSTEM_INSTRUCTION_AUTOSOLVE = `Sen bir soru çözme botusun. Sana HTML formatında bir soru gönderilecek. 
+const SYSTEM_INSTRUCTION_AUTOSOLVE = `You are a question-solving bot. You will be sent a question in HTML format.
 
-MUTLAK KURALLAR:
-- SADECE doğru şıkkın harfini yaz. Örnek: A veya B veya C veya D
-- Başka HİÇBİR ŞEY yazma. Açıklama yapma, nokta koyma, cümle yazma.
-- Sadece tek bir büyük harf yaz.
-- Eğer açık uçlu bir soruysa en kısa cevabı yaz.`;
+ABSOLUTE RULES:
+- Write ONLY the letter of the correct option. Example: A or B or C or D
+- Write NOTHING else. No explanation, no punctuation, no sentences.
+- Write only a single uppercase letter.
+- If it is an open-ended question, write the shortest possible answer.`;
 
 // ===================== STORAGE HELPERS =====================
 async function getChatMessages() {
@@ -58,7 +58,7 @@ async function callGemini(html, userText) {
 
   if (!apiKey) {
     const msgs = await getChatMessages();
-    msgs.push({ role: 'system', text: '❌ Lütfen önce Ayarlar\'dan Gemini API anahtarınızı girin.' });
+    msgs.push({ role: 'system', text: '❌ Please enter your Gemini API key in Settings first.' });
     await saveChatMessages(msgs);
     chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
     return;
@@ -67,15 +67,15 @@ async function callGemini(html, userText) {
   // Build user message for API
   let apiMsg = '';
   if (html) {
-    apiMsg += `Aşağıdaki HTML elementi bir web sayfasından seçildi. Bu bir soru veya test sorusu olabilir. Lütfen içeriği analiz et ve soruyu yanıtla. Cevabı doğrudan ver, açıklama ekle.\n\n\`\`\`html\n${html}\n\`\`\``;
+    apiMsg += `The following HTML element was selected from a web page. It may contain a question or quiz question. Please analyze the content and answer the question. Give the answer directly.\n\n\`\`\`html\n${html}\n\`\`\``;
   }
   if (userText) {
-    apiMsg += (html ? '\n\nKullanıcının ek mesajı: ' : '') + userText;
+    apiMsg += (html ? '\n\nUser\'s additional message: ' : '') + userText;
   }
 
   // Build display message for UI
   const displayMsg = html
-    ? '📌 Analiz ediliyor...' + (userText ? '\n' + userText : '')
+    ? '📌 Analyzing...' + (userText ? '\n' + userText : '')
     : userText;
 
   // Save user message to chat
@@ -126,7 +126,7 @@ async function callGemini(html, userText) {
     }
 
     const result = await response.json();
-    const aiText = result.candidates?.[0]?.content?.parts?.[0]?.text || 'Yanıt alınamadı.';
+    const aiText = result.candidates?.[0]?.content?.parts?.[0]?.text || 'No response received.';
 
     // Save AI response to API history
     apiHistory.push({ role: 'model', parts: [{ text: aiText }] });
@@ -147,7 +147,7 @@ async function callGemini(html, userText) {
     await saveApiHistory(apiHistory);
 
     const msgs = await getChatMessages();
-    msgs.push({ role: 'ai', text: `❌ Bağlantı hatası: ${err.message}` });
+    msgs.push({ role: 'ai', text: `❌ Connection error: ${err.message}` });
     await saveChatMessages(msgs);
 
     chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
@@ -219,11 +219,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 
   if (msg.action === 'autoSolveStart') {
-    // Add "Otomatik Çözüm" banner to chat (don't set loading:true here to avoid race with noQuestions)
+    // Add "Auto Solve" banner to chat (don't set loading:true here to avoid race with noQuestions)
     autoSolveActive = false;  // Reset for new auto-solve session
     (async () => {
       const msgs = await getChatMessages();
-      msgs.push({ role: 'autosolve-banner', text: '⚡ Otomatik Çözüm' });
+      msgs.push({ role: 'autosolve-banner', text: '⚡ Auto Solve' });
       await saveChatMessages(msgs);
       chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
     })();
@@ -253,7 +253,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     autoSolveCancelled = true;
     (async () => {
       const msgs = await getChatMessages();
-      msgs.push({ role: 'autosolve-banner', text: '⛔ Otomatik çözüm iptal edildi' });
+      msgs.push({ role: 'autosolve-banner', text: '⛔ Auto solve cancelled' });
       await saveChatMessages(msgs);
       chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
     })();
@@ -267,7 +267,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     }
     (async () => {
       const msgs = await getChatMessages();
-      msgs.push({ role: 'autosolve-banner', text: '❌ Sayfada soru bulunamadı' });
+      msgs.push({ role: 'autosolve-banner', text: '❌ No questions found on page' });
       await saveChatMessages(msgs);
       chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
     })();
@@ -288,7 +288,7 @@ async function processAutoSolveQueue(questions, totalQuestions, tabId) {
   if (!apiKey) {
     console.log('[Xolver BG] No API key!');
     const msgs = await getChatMessages();
-    msgs.push({ role: 'system', text: '❌ API anahtarı bulunamadı!' });
+    msgs.push({ role: 'system', text: '❌ API key not found!' });
     await saveChatMessages(msgs);
     chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
     chrome.runtime.sendMessage({ action: 'autoSolveStatus', status: 'done', solved: 0 }).catch(() => {});
@@ -338,9 +338,9 @@ async function processAutoSolveQueue(questions, totalQuestions, tabId) {
   // Add completion summary to chat
   const finalMsgs = await getChatMessages();
   if (failedCount > 0) {
-    finalMsgs.push({ role: 'autosolve-banner', text: '⚡ Otomatik çözüm tamamlandı<br>✅ ' + solvedCount + ' çözüldü, ❌ ' + failedCount + ' başarısız' });
+    finalMsgs.push({ role: 'autosolve-banner', text: '⚡ Auto solve complete<br>✅ ' + solvedCount + ' solved, ❌ ' + failedCount + ' failed' });
   } else {
-    finalMsgs.push({ role: 'autosolve-banner', text: '✅ Otomatik çözüm tamamlandı — ' + solvedCount + ' soru çözüldü' });
+    finalMsgs.push({ role: 'autosolve-banner', text: '✅ Auto solve complete — ' + solvedCount + ' question(s) solved' });
   }
   await saveChatMessages(finalMsgs);
   chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
@@ -355,7 +355,7 @@ async function processAutoSolveQueue(questions, totalQuestions, tabId) {
 }
 
 async function solveOneQuestion(html, questionIndex, tabId, apiKey, model) {
-  const apiMsg = `Bu HTML bir sınav/test sorusudur. Doğru cevabın şıkkını (harfini) söyle:\n\n\`\`\`html\n${html}\n\`\`\``;
+  const apiMsg = `This HTML contains an exam/quiz question. State the letter of the correct answer:\n\n\`\`\`html\n${html}\n\`\`\``;
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     // Check cancellation before each attempt
@@ -397,7 +397,7 @@ async function solveOneQuestion(html, questionIndex, tabId, apiKey, model) {
           }
 
           const msgs = await getChatMessages();
-          msgs.push({ role: 'system', text: `⏳ Soru ${questionIndex + 1}: Kota aşıldı, ${Math.ceil(waitTime / 1000)}sn bekleniyor...` });
+          msgs.push({ role: 'system', text: `⏳ Question ${questionIndex + 1}: Quota exceeded, waiting ${Math.ceil(waitTime / 1000)}s...` });
           await saveChatMessages(msgs);
           chrome.runtime.sendMessage({ action: 'chatUpdated', loading: true }).catch(() => {});
 
@@ -410,7 +410,7 @@ async function solveOneQuestion(html, questionIndex, tabId, apiKey, model) {
           continue;
         } else {
           const msgs = await getChatMessages();
-          msgs.push({ role: 'ai', text: `❌ Soru ${questionIndex + 1}: Kota hatası — çözülemedi` });
+          msgs.push({ role: 'ai', text: `❌ Question ${questionIndex + 1}: Quota error — could not solve` });
           await saveChatMessages(msgs);
           chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
           return false;
@@ -429,7 +429,7 @@ async function solveOneQuestion(html, questionIndex, tabId, apiKey, model) {
         } catch(e) {}
 
         const msgs = await getChatMessages();
-        msgs.push({ role: 'ai', text: `❌ Soru ${questionIndex + 1}: ${errMsg}` });
+        msgs.push({ role: 'ai', text: `❌ Question ${questionIndex + 1}: ${errMsg}` });
         await saveChatMessages(msgs);
         chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
         return false;
@@ -456,7 +456,7 @@ async function solveOneQuestion(html, questionIndex, tabId, apiKey, model) {
 
       // Add to chat
       const msgs = await getChatMessages();
-      msgs.push({ role: 'ai', text: `⚡ Soru ${questionIndex + 1}: **${answer.trim()}**` });
+      msgs.push({ role: 'ai', text: `⚡ Question ${questionIndex + 1}: **${answer.trim()}**` });
       await saveChatMessages(msgs);
       chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
       return true;
@@ -466,7 +466,7 @@ async function solveOneQuestion(html, questionIndex, tabId, apiKey, model) {
 
       if (attempt >= MAX_RETRIES) {
         const msgs = await getChatMessages();
-        msgs.push({ role: 'ai', text: `❌ Soru ${questionIndex + 1}: Bağlantı hatası — ${err.message}` });
+        msgs.push({ role: 'ai', text: `❌ Question ${questionIndex + 1}: Connection error — ${err.message}` });
         await saveChatMessages(msgs);
         chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
         return false;

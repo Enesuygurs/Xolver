@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M18 6L6 18"/><path d="M6 6l12 12"/>
       </svg>
-      İptal etmek için tıklayın...`;
+      Click to cancel...`;
   }
 
   // Restore auto-solve button state
@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M18 6L6 18"/><path d="M6 6l12 12"/>
         </svg>
-        \u0130ptal Et`;
+        Cancel`;
     }
   } catch (e) {}
 
@@ -153,7 +153,7 @@ saveApiKeyBtn.addEventListener('click', async () => {
   const key = apiKeyInput.value.trim();
   if (!key) return;
   await chrome.storage.local.set({ geminiApiKey: key });
-  showSystemMsg('API anahtarı kaydedildi ✓');
+  showSystemMsg('API key saved ✓');
   closeAllPanels();
   setActiveTab(homeBtn);
 });
@@ -220,7 +220,7 @@ async function loadCurrentSiteConfig() {
 
 document.getElementById('saveSiteConfig').addEventListener('click', async () => {
   if (!currentDomainName) {
-    showSystemMsg('Site alan\u0131 tespit edilemedi');
+    showSystemMsg('Site domain could not be detected');
     return;
   }
 
@@ -231,7 +231,7 @@ document.getElementById('saveSiteConfig').addEventListener('click', async () => 
   };
 
   if (!config.questionSelector) {
-    showSystemMsg('Soru konteyneri se\u00e7icisi gerekli');
+    showSystemMsg('Question container selector is required');
     return;
   }
 
@@ -239,7 +239,7 @@ document.getElementById('saveSiteConfig').addEventListener('click', async () => 
   const configs = data.xolverSiteConfigs || {};
   configs[currentDomainName] = config;
   await chrome.storage.local.set({ xolverSiteConfigs: configs });
-  showSystemMsg(currentDomainName + ' ayarlar\u0131 kaydedildi \u2713');
+  showSystemMsg(currentDomainName + ' settings saved ✓');
 });
 
 document.getElementById('deleteSiteConfig').addEventListener('click', async () => {
@@ -253,7 +253,7 @@ document.getElementById('deleteSiteConfig').addEventListener('click', async () =
   document.getElementById('questionSelector').value = '';
   document.getElementById('optionSelector').value = '';
   document.getElementById('optionInputSelector').value = '';
-  showSystemMsg(currentDomainName + ' ayarlar\u0131 silindi');
+  showSystemMsg(currentDomainName + ' settings deleted');
 });
 
 // ===================== CLEAR CHAT =====================
@@ -264,7 +264,7 @@ document.getElementById('clearChatBtn').addEventListener('click', async () => {
   chatMessages.innerHTML = `
     <div class="welcome-message">
       <div class="welcome-icon">🎯</div>
-      <p>Xolver çözmeye hazır!</p>
+      <p>Xolver is ready to solve!</p>
     </div>`;
 });
 
@@ -282,7 +282,7 @@ selectElementBtn.addEventListener('click', async () => {
         <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/>
         <path d="M13 13l6 6"/>
       </svg>
-      Element Seç`;
+      Select Element`;
     chrome.storage.local.remove('xolverSelectorActive');
     if (lastSelectorTabId) {
       chrome.tabs.sendMessage(lastSelectorTabId, { action: 'stopSelector' }).catch(() => {});
@@ -337,7 +337,7 @@ selectElementBtn.addEventListener('click', async () => {
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M18 6L6 18"/><path d="M6 6l12 12"/>
       </svg>
-      İptal etmek için tıklayın...`;
+      Click to cancel...`;
   }
 });
 
@@ -356,7 +356,7 @@ autoSolveBtn.addEventListener('click', async () => {
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
       </svg>
-      Otomatik Çöz`;
+      Auto Solve`;
     renderChatFromStorage();
     return;
   }
@@ -393,9 +393,9 @@ autoSolveBtn.addEventListener('click', async () => {
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path d="M18 6L6 18"/><path d="M6 6l12 12"/>
     </svg>
-    İptal Et`;
+    Cancel`;
 
-  // Add "Otomatik Çözüm" banner to chat via background storage
+  // Add "Auto Solve" banner to chat via background storage
   chrome.runtime.sendMessage({ action: 'autoSolveStart' });
 
   // Pass tabId and tab hostname explicitly so content script in iframes can use it
@@ -414,7 +414,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
         </svg>
-        Otomatik Çöz`;
+        Auto Solve`;
       renderChatFromStorage();
     }
   }
@@ -476,7 +476,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/>
         <path d="M13 13l6 6"/>
       </svg>
-      Element Seç`;
+      Select Element`;
 
     // Also refresh preview if there's a new selection
     if (!isLoading) {
@@ -509,7 +509,7 @@ async function renderChatFromStorage() {
     chatMessages.innerHTML = `
       <div class="welcome-message">
         <div class="welcome-icon">🎯</div>
-        <p>Xolver çözmeye hazır!</p>
+        <p>Xolver is ready to solve!</p>
       </div>`;
     return;
   }

@@ -33,7 +33,7 @@
       "suggested_key": {
         "default": "Alt+S"
       },
-      "description": "Element seçme modunu başlat"
+      "description": "Start element selection mode"
     }
   },
   "web_accessible_resources": [

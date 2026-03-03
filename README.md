@@ -49,13 +49,13 @@ Xolver/
 
 ### Manual Question Solving
 1. Open the extension popup
-2. Click **Element Seç** (or press `Alt+S`)
+2. Click **Select Element** (or press `Alt+S`)
 3. Click on a question element on the page
 4. Xolver sends the question to Gemini and displays the answer
 
 ### Auto-Solve
 1. Configure custom CSS selectors for the site under **Site Config**
-2. Click **Otomatik Çöz**
+2. Click **Auto Solve**
 3. Xolver detects all questions and solves them sequentially
 
 ### Custom Site Config
