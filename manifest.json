@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Xolver",
   "version": "1.0.0",
-  "description": "Sayfadaki elementleri seçerek Gemini AI ile soru çözen Chrome eklentisi",
+  "description": "Gemini AI ile soru çözen Chrome eklentisi",
   "permissions": [
     "activeTab",
     "tabs",
@@ -33,7 +33,7 @@
       "suggested_key": {
         "default": "Alt+S"
       },
-      "description": "Element se\u00e7me modunu ba\u015flat"
+      "description": "Element seçme modunu başlat"
     }
   },
   "content_scripts": [],
