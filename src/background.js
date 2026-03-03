@@ -267,7 +267,6 @@ chrome.commands.onCommand.addListener(async (command) => {
 
     try {
       await chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, files: ['src/content.js'] });
-      await chrome.scripting.insertCSS({ target: { tabId: tab.id, allFrames: true }, files: ['src/content.css'] });
     } catch (e) {}
 
     // Toggle: if already selecting, stop

@@ -329,8 +329,8 @@ let currentDomainName = null;
 async function getCurrentTab() {
   if (isDetached) {
     const allTabs = await chrome.tabs.query({ active: true });
-    let tab = allTabs.find(t => t.url && !t.url.startsWith('chrome-extension://') && !t.url.startsWith('chrome://'));
-    if (!tab) tab = allTabs.find(t => t.url && t.url.startsWith('http'));
+    let tab = allTabs.find(tab => tab.url && !tab.url.startsWith('chrome-extension://') && !tab.url.startsWith('chrome://'));
+    if (!tab) tab = allTabs.find(tab => tab.url && tab.url.startsWith('http'));
     return tab;
   } else {
     const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -445,8 +445,8 @@ selectElementBtn.addEventListener('click', async () => {
     // In detached mode, find the active tab in a normal browser window
     const allTabs = await chrome.tabs.query({ active: true });
     // Pick the first tab that is a real web page (not extension or chrome internal)
-    tab = allTabs.find(t => t.url && !t.url.startsWith('chrome-extension://') && !t.url.startsWith('chrome://'));
-    if (!tab) tab = allTabs.find(t => t.url && t.url.startsWith('http'));
+    tab = allTabs.find(tab => tab.url && !tab.url.startsWith('chrome-extension://') && !tab.url.startsWith('chrome://'));
+    if (!tab) tab = allTabs.find(tab => tab.url && tab.url.startsWith('http'));
   } else {
     const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
     tab = tabs[0];
@@ -459,10 +459,6 @@ selectElementBtn.addEventListener('click', async () => {
     await chrome.scripting.executeScript({
       target: { tabId: tab.id, allFrames: true },
       files: ['src/content.js']
-    });
-    await chrome.scripting.insertCSS({
-      target: { tabId: tab.id, allFrames: true },
-      files: ['src/content.css']
     });
   } catch (e) {
     // Already injected or error
@@ -481,11 +477,7 @@ selectElementBtn.addEventListener('click', async () => {
     window.close();
   } else {
     selectElementBtn.classList.add('active');
-    selectElementBtn.innerHTML = `
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M18 6L6 18"/><path d="M6 6l12 12"/>
-      </svg>
-      Click to cancel...`;
+    selectElementBtn.innerHTML = `${SVG_CANCEL} ${t('clickToCancel')}`;
   }
 });
 
@@ -509,8 +501,8 @@ autoSolveBtn.addEventListener('click', async () => {
 
   if (isDetached) {
     const allTabs = await chrome.tabs.query({ active: true });
-    tab = allTabs.find(t => t.url && !t.url.startsWith('chrome-extension://') && !t.url.startsWith('chrome://'));
-    if (!tab) tab = allTabs.find(t => t.url && t.url.startsWith('http'));
+    tab = allTabs.find(tab => tab.url && !tab.url.startsWith('chrome-extension://') && !tab.url.startsWith('chrome://'));
+    if (!tab) tab = allTabs.find(tab => tab.url && tab.url.startsWith('http'));
   } else {
     const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
     tab = tabs[0];
@@ -523,10 +515,6 @@ autoSolveBtn.addEventListener('click', async () => {
     await chrome.scripting.executeScript({
       target: { tabId: tab.id, allFrames: true },
       files: ['src/content.js']
-    });
-    await chrome.scripting.insertCSS({
-      target: { tabId: tab.id, allFrames: true },
-      files: ['src/content.css']
     });
   } catch (e) {}
 
