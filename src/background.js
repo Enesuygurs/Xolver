@@ -175,8 +175,8 @@ chrome.commands.onCommand.addListener(async (command) => {
     if (!tab || !tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) return;
 
     try {
-      await chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, files: ['content.js'] });
-      await chrome.scripting.insertCSS({ target: { tabId: tab.id, allFrames: true }, files: ['content.css'] });
+      await chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, files: ['src/content.js'] });
+      await chrome.scripting.insertCSS({ target: { tabId: tab.id, allFrames: true }, files: ['src/content.css'] });
     } catch (e) {}
 
     // Toggle: if already selecting, stop

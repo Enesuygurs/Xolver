@@ -310,11 +310,11 @@ selectElementBtn.addEventListener('click', async () => {
   try {
     await chrome.scripting.executeScript({
       target: { tabId: tab.id, allFrames: true },
-      files: ['content.js']
+      files: ['src/content.js']
     });
     await chrome.scripting.insertCSS({
       target: { tabId: tab.id, allFrames: true },
-      files: ['content.css']
+      files: ['src/content.css']
     });
   } catch (e) {
     // Already injected or error
@@ -378,11 +378,11 @@ autoSolveBtn.addEventListener('click', async () => {
   try {
     await chrome.scripting.executeScript({
       target: { tabId: tab.id, allFrames: true },
-      files: ['content.js']
+      files: ['src/content.js']
     });
     await chrome.scripting.insertCSS({
       target: { tabId: tab.id, allFrames: true },
-      files: ['content.css']
+      files: ['src/content.css']
     });
   } catch (e) {}
 
