@@ -228,7 +228,7 @@ const isDetached = new URLSearchParams(window.location.search).has('detached');
 
 document.getElementById('pinBtn').addEventListener('click', async () => {
   const win = await chrome.windows.create({
-    url: chrome.runtime.getURL('popup.html?detached=1'),
+    url: chrome.runtime.getURL('src/popup.html?detached=1'),
     type: 'popup',
     width: 420,
     height: 600,
