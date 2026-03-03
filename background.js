@@ -167,6 +167,30 @@ async function focusXolverWindow() {
   }
 }
 
+// ===================== KEYBOARD SHORTCUT =====================
+chrome.commands.onCommand.addListener(async (command) => {
+  if (command === 'start-selector') {
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    const tab = tabs[0];
+    if (!tab || !tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) return;
+
+    try {
+      await chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, files: ['content.js'] });
+      await chrome.scripting.insertCSS({ target: { tabId: tab.id, allFrames: true }, files: ['content.css'] });
+    } catch (e) {}
+
+    // Toggle: if already selecting, stop
+    const state = await chrome.storage.local.get('xolverSelectorActive');
+    if (state.xolverSelectorActive) {
+      chrome.tabs.sendMessage(tab.id, { action: 'stopSelector' }).catch(() => {});
+      chrome.storage.local.remove('xolverSelectorActive');
+    } else {
+      chrome.tabs.sendMessage(tab.id, { action: 'startSelector' }).catch(() => {});
+      chrome.storage.local.set({ xolverSelectorActive: { tabId: tab.id } });
+    }
+  }
+});
+
 // ===================== MESSAGE HANDLER =====================
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.action === 'elementSelected') {

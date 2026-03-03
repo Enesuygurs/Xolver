@@ -28,6 +28,14 @@
   "background": {
     "service_worker": "background.js"
   },
+  "commands": {
+    "start-selector": {
+      "suggested_key": {
+        "default": "Alt+S"
+      },
+      "description": "Element se\u00e7me modunu ba\u015flat"
+    }
+  },
   "content_scripts": [],
   "web_accessible_resources": [
     {
