@@ -140,11 +140,17 @@
         : '');
 
     // Send to extension
-    chrome.runtime.sendMessage({
-      action: 'elementSelected',
-      html: html,
-      tagInfo: tagInfo
-    });
+    try {
+      chrome.runtime.sendMessage({
+        action: 'elementSelected',
+        html: html,
+        tagInfo: tagInfo
+      });
+    } catch (e) {
+      // Extension context invalidated (e.g. after reload) — stop silently
+      stopSelector();
+      return;
+    }
 
     stopSelector();
   }
@@ -180,18 +186,22 @@
   }
 
   // ===================== MESSAGE LISTENER =====================
-  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-    if (msg.action === 'startSelector') {
-      startSelector();
-    } else if (msg.action === 'stopSelector') {
-      stopSelector();
-    } else if (msg.action === 'autoSolve') {
-      autoSolveQuestions(msg.tabId, msg.tabHostname);
-    } else if (msg.action === 'autoSolveAnswer') {
-      console.log('[Xolver] Received answer for question', msg.questionIndex, ':', msg.answer);
-      applyAnswer(msg.questionIndex, msg.answer);
-    }
-  });
+  try {
+    chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+      if (msg.action === 'startSelector') {
+        startSelector();
+      } else if (msg.action === 'stopSelector') {
+        stopSelector();
+      } else if (msg.action === 'autoSolve') {
+        autoSolveQuestions(msg.tabId, msg.tabHostname);
+      } else if (msg.action === 'autoSolveAnswer') {
+        console.log('[Xolver] Received answer for question', msg.questionIndex, ':', msg.answer);
+        applyAnswer(msg.questionIndex, msg.answer);
+      }
+    });
+  } catch (e) {
+    // Extension context invalidated, skip listener registration
+  }
 
   // ===================== AUTO-SOLVE =====================
   const QUESTION_SELECTORS = [
@@ -369,8 +379,10 @@
       if (isTopFrame) {
         // Wait long enough for iframe retries to complete (8 retries * 1.5s + buffer)
         await new Promise(r => setTimeout(r, 15000));
-        chrome.runtime.sendMessage({ action: 'autoSolveNoQuestions' });
-        chrome.runtime.sendMessage({ action: 'autoSolveStatus', status: 'noQuestions' });
+        try {
+          chrome.runtime.sendMessage({ action: 'autoSolveNoQuestions' });
+          chrome.runtime.sendMessage({ action: 'autoSolveStatus', status: 'noQuestions' });
+        } catch (e) {}
       }
       return;
     }
@@ -398,12 +410,14 @@
     });
 
     // Send ALL questions to background at once — background handles sequential processing
-    chrome.runtime.sendMessage({
-      action: 'autoSolveAllQuestions',
-      questions: questionsData,
-      totalQuestions: detectedQuestions.length,
-      tabId: tabId
-    });
+    try {
+      chrome.runtime.sendMessage({
+        action: 'autoSolveAllQuestions',
+        questions: questionsData,
+        totalQuestions: detectedQuestions.length,
+        tabId: tabId
+      });
+    } catch (e) {}
   }
 
   function applyAnswer(questionIndex, answer) {
