@@ -32,7 +32,6 @@ const STRINGS = {
     // Dynamic button labels
     welcomeText: 'Xolver is ready to solve!',
     selectElement: 'Select Element',
-    clickToCancel: 'Click to cancel...',
     autoSolve: 'Auto Solve',
     cancel: 'Cancel',
     // Status messages
@@ -74,7 +73,6 @@ const STRINGS = {
     // Dynamic button labels
     welcomeText: 'Xolver \u00e7\u00f6zmeye haz\u0131r!',
     selectElement: 'Element Se\u00e7',
-    clickToCancel: '\u0130ptal etmek i\u00e7in t\u0131klay\u0131n...',
     autoSolve: 'Otomatik \u00c7\u00f6z',
     cancel: '\u0130ptal Et',
     // Status messages
@@ -204,7 +202,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     isSelectingMode = true;
     lastSelectorTabId = selectorState.xolverSelectorActive.tabId;
     selectElementBtn.classList.add('active');
-    selectElementBtn.innerHTML = `${SVG_CANCEL} ${t('clickToCancel')}`;
+    selectElementBtn.innerHTML = `${SVG_CANCEL} ${t('cancel')}`;
   }
 
   // Restore auto-solve button state
@@ -477,7 +475,7 @@ selectElementBtn.addEventListener('click', async () => {
     window.close();
   } else {
     selectElementBtn.classList.add('active');
-    selectElementBtn.innerHTML = `${SVG_CANCEL} ${t('clickToCancel')}`;
+    selectElementBtn.innerHTML = `${SVG_CANCEL} ${t('cancel')}`;
   }
 });
 
