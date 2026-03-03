@@ -1,3 +1,98 @@
+// ===================== I18N =====================
+const STRINGS = {
+  en: {
+    // Tooltips
+    clearChatTitle: 'Clear chat',
+    pinWindowTitle: 'Pin window',
+    homeTitle: 'Home',
+    siteSettingsTitle: 'Site Settings',
+    settingsTitle: 'Settings',
+    selectElementTitle: 'Select Element (Alt+S)',
+    clearSelectionTitle: 'Clear',
+    sendTitle: 'Send',
+    // Placeholders
+    apiKeyPlaceholder: 'Enter your API key...',
+    inputPlaceholder: 'Type a message...',
+    questionSelectorPlaceholder: 'Question container — e.g., .mcq__inner',
+    optionSelectorPlaceholder: 'Answer option — e.g., .mcq__item',
+    optionInputPlaceholder: 'Answer input — e.g., input.mcq__item-input',
+    // Buttons
+    saveBtn: 'Save',
+    deleteBtn: 'Delete',
+    // Labels & hints
+    languageLabel: 'Language',
+    preferencesLabel: 'Preferences',
+    shortAnswerLabel: 'Short Answer Mode',
+    shortAnswerHint: 'Returns only the correct answer without explanation',
+    freeApiLabel: 'Free API Mode',
+    freeApiHint: 'Adds delays between requests to avoid quota errors',
+    siteSettingsLabel: 'Site Settings',
+    siteConfigHint: 'Define custom CSS selectors for the current site. If left empty, default Moodle selectors will be used.',
+    apiHintHTML: 'You can get an API key from <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a>.',
+    // Dynamic button labels
+    welcomeText: 'Xolver is ready to solve!',
+    selectElement: 'Select Element',
+    clickToCancel: 'Click to cancel...',
+    autoSolve: 'Auto Solve',
+    cancel: 'Cancel',
+    // Status messages
+    apiKeySaved: 'API key saved \u2713',
+    siteDomainError: 'Site domain could not be detected',
+    questionSelectorRequired: 'Question container selector is required',
+    settingsSaved: (domain) => `${domain} settings saved \u2713`,
+    settingsDeleted: (domain) => `${domain} settings deleted`,
+  },
+  tr: {
+    // Tooltips
+    clearChatTitle: 'Sohbeti temizle',
+    pinWindowTitle: 'Sabit pencerede a\u00e7',
+    homeTitle: 'Ana Sayfa',
+    siteSettingsTitle: 'Site Ayarlar\u0131',
+    settingsTitle: 'Ayarlar',
+    selectElementTitle: 'Element Se\u00e7 (Alt+S)',
+    clearSelectionTitle: 'Temizle',
+    sendTitle: 'G\u00f6nder',
+    // Placeholders
+    apiKeyPlaceholder: 'API anahtar\u0131n\u0131z\u0131 girin...',
+    inputPlaceholder: 'Mesaj Yaz\u0131n...',
+    questionSelectorPlaceholder: 'Soru konteyneri \u2014 \u00f6rn: .mcq__inner',
+    optionSelectorPlaceholder: 'Cevap se\u00e7ene\u011fi \u2014 \u00f6rn: .mcq__item',
+    optionInputPlaceholder: 'Cevap input \u2014 \u00f6rn: input.mcq__item-input',
+    // Buttons
+    saveBtn: 'Kaydet',
+    deleteBtn: 'Sil',
+    // Labels & hints
+    languageLabel: 'Dil',
+    preferencesLabel: 'Tercihler',
+    shortAnswerLabel: 'K\u0131sa Yan\u0131t Modu',
+    shortAnswerHint: 'A\u00e7\u0131klama yapmadan yaln\u0131zca do\u011fru cevab\u0131 d\u00f6nd\u00fcr\u00fcr',
+    freeApiLabel: '\u00dccretsiz API Modu',
+    freeApiHint: 'Kota a\u015f\u0131m\u0131n\u0131 \u00f6nlemek i\u00e7in istekler aras\u0131 bekleme ekler',
+    siteSettingsLabel: 'Site Ayarlar\u0131',
+    siteConfigHint: 'Mevcut site i\u00e7in \u00f6zel CSS se\u00e7icileri tan\u0131mlay\u0131n. Bo\u015f b\u0131rak\u0131l\u0131rsa varsay\u0131lan Moodle se\u00e7icileri kullan\u0131l\u0131r.',
+    apiHintHTML: '<a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a>\'dan API anahtar\u0131 alabilirsiniz.',
+    // Dynamic button labels
+    welcomeText: 'Xolver \u00e7\u00f6zmeye haz\u0131r!',
+    selectElement: 'Element Se\u00e7',
+    clickToCancel: '\u0130ptal etmek i\u00e7in t\u0131klay\u0131n...',
+    autoSolve: 'Otomatik \u00c7\u00f6z',
+    cancel: '\u0130ptal Et',
+    // Status messages
+    apiKeySaved: 'API anahtar\u0131 kaydedildi \u2713',
+    siteDomainError: 'Site alan\u0131 tespit edilemedi',
+    questionSelectorRequired: 'Soru konteyneri se\u00e7icisi gerekli',
+    settingsSaved: (domain) => `${domain} ayarlar\u0131 kaydedildi \u2713`,
+    settingsDeleted: (domain) => `${domain} ayarlar\u0131 silindi`,
+  }
+};
+
+let currentLang = 'en';
+
+function t(key, ...args) {
+  const str = (STRINGS[currentLang] || STRINGS.en)[key];
+  return typeof str === 'function' ? str(...args) : (str != null ? str : (STRINGS.en[key] != null ? STRINGS.en[key] : key));
+}
+
 // ===================== STATE =====================
 let selectedHTML = '';
 let isLoading = false;
@@ -17,10 +112,65 @@ const chatMessages = document.getElementById('chatMessages');
 const userInput = document.getElementById('userInput');
 const sendBtn = document.getElementById('sendBtn');
 
+// ===================== BUTTON HTML HELPERS =====================
+const SVG_CURSOR = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/><path d="M13 13l6 6"/></svg>`;
+const SVG_CANCEL = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>`;
+const SVG_BOLT   = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>`;
+
+// ===================== APPLY LANGUAGE =====================
+function applyLanguage(lang) {
+  currentLang = lang;
+
+  // Tooltips
+  document.getElementById('clearChatBtn').title     = t('clearChatTitle');
+  document.getElementById('pinBtn').title           = t('pinWindowTitle');
+  document.getElementById('homeBtn').title          = t('homeTitle');
+  document.getElementById('siteConfigBtn').title    = t('siteSettingsTitle');
+  document.getElementById('settingsBtn').title      = t('settingsTitle');
+  document.getElementById('selectElementBtn').title = t('selectElementTitle');
+  document.getElementById('clearSelection').title   = t('clearSelectionTitle');
+  document.getElementById('sendBtn').title          = t('sendTitle');
+
+  // Placeholders
+  document.getElementById('apiKeyInput').placeholder         = t('apiKeyPlaceholder');
+  document.getElementById('userInput').placeholder           = t('inputPlaceholder');
+  document.getElementById('questionSelector').placeholder    = t('questionSelectorPlaceholder');
+  document.getElementById('optionSelector').placeholder      = t('optionSelectorPlaceholder');
+  document.getElementById('optionInputSelector').placeholder = t('optionInputPlaceholder');
+
+  // Button text
+  document.getElementById('saveApiKey').textContent     = t('saveBtn');
+  document.getElementById('saveSiteConfig').textContent = t('saveBtn');
+  document.getElementById('deleteSiteConfig').textContent = t('deleteBtn');
+
+  // Labels & hints
+  document.getElementById('languageLabel').textContent    = t('languageLabel');
+  document.getElementById('preferencesLabel').textContent = t('preferencesLabel');
+  document.getElementById('shortAnswerLabel').textContent = t('shortAnswerLabel');
+  document.getElementById('shortAnswerHint').textContent  = t('shortAnswerHint');
+  document.getElementById('freeApiLabel').textContent     = t('freeApiLabel');
+  document.getElementById('freeApiHint').textContent      = t('freeApiHint');
+  document.getElementById('siteSettingsLabel').textContent = t('siteSettingsLabel');
+  document.getElementById('siteConfigHint').textContent   = t('siteConfigHint');
+  document.getElementById('apiHint').innerHTML            = t('apiHintHTML');
+
+  // Action buttons (only update if not in active state)
+  if (!isSelectingMode) {
+    selectElementBtn.innerHTML = `${SVG_CURSOR} ${t('selectElement')}`;
+  }
+  if (!isAutoSolving) {
+    autoSolveBtn.innerHTML = `${SVG_BOLT} ${t('autoSolve')}`;
+  }
+
+  // Welcome message (if visible)
+  const welcomeP = document.querySelector('#chatMessages .welcome-message p');
+  if (welcomeP) welcomeP.textContent = t('welcomeText');
+}
+
 // ===================== INIT =====================
 document.addEventListener('DOMContentLoaded', async () => {
   // Load saved API key & model
-  const data = await chrome.storage.local.get(['geminiApiKey', 'geminiModel', 'xolverShortAnswer', 'xolverFreeApi', 'xolverLastSelected']);
+  const data = await chrome.storage.local.get(['geminiApiKey', 'geminiModel', 'xolverShortAnswer', 'xolverFreeApi', 'xolverLastSelected', 'xolverLanguage']);
   if (data.geminiApiKey) {
     apiKeyInput.value = data.geminiApiKey;
   }
@@ -30,6 +180,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('shortAnswerToggle').checked = !!data.xolverShortAnswer;
   // Free API mode defaults to true if not set
   document.getElementById('freeApiToggle').checked = data.xolverFreeApi !== false;
+
+  // Apply saved language (defaults to English)
+  currentLang = data.xolverLanguage || 'en';
+  document.getElementById('languageSelect').value = currentLang;
+  applyLanguage(currentLang);
 
   // Restore last selected element preview
   if (data.xolverLastSelected) {
@@ -49,11 +204,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     isSelectingMode = true;
     lastSelectorTabId = selectorState.xolverSelectorActive.tabId;
     selectElementBtn.classList.add('active');
-    selectElementBtn.innerHTML = `
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M18 6L6 18"/><path d="M6 6l12 12"/>
-      </svg>
-      Click to cancel...`;
+    selectElementBtn.innerHTML = `${SVG_CANCEL} ${t('clickToCancel')}`;
   }
 
   // Restore auto-solve button state
@@ -63,11 +214,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       isAutoSolving = true;
       isLoading = true;
       autoSolveBtn.classList.add('active');
-      autoSolveBtn.innerHTML = `
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M18 6L6 18"/><path d="M6 6l12 12"/>
-        </svg>
-        Cancel`;
+      autoSolveBtn.innerHTML = `${SVG_CANCEL} ${t('cancel')}`;
     }
   } catch (e) {}
 
@@ -153,7 +300,7 @@ saveApiKeyBtn.addEventListener('click', async () => {
   const key = apiKeyInput.value.trim();
   if (!key) return;
   await chrome.storage.local.set({ geminiApiKey: key });
-  showSystemMsg('API key saved ✓');
+  showSystemMsg(t('apiKeySaved'));
   closeAllPanels();
   setActiveTab(homeBtn);
 });
@@ -168,6 +315,12 @@ document.getElementById('shortAnswerToggle').addEventListener('change', async (e
 
 document.getElementById('freeApiToggle').addEventListener('change', async (e) => {
   await chrome.storage.local.set({ xolverFreeApi: e.target.checked });
+});
+
+document.getElementById('languageSelect').addEventListener('change', async (e) => {
+  const lang = e.target.value;
+  await chrome.storage.local.set({ xolverLanguage: lang });
+  applyLanguage(lang);
 });
 
 // ===================== SITE CONFIG =====================
@@ -220,7 +373,7 @@ async function loadCurrentSiteConfig() {
 
 document.getElementById('saveSiteConfig').addEventListener('click', async () => {
   if (!currentDomainName) {
-    showSystemMsg('Site domain could not be detected');
+    showSystemMsg(t('siteDomainError'));
     return;
   }
 
@@ -231,7 +384,7 @@ document.getElementById('saveSiteConfig').addEventListener('click', async () => 
   };
 
   if (!config.questionSelector) {
-    showSystemMsg('Question container selector is required');
+    showSystemMsg(t('questionSelectorRequired'));
     return;
   }
 
@@ -239,7 +392,7 @@ document.getElementById('saveSiteConfig').addEventListener('click', async () => 
   const configs = data.xolverSiteConfigs || {};
   configs[currentDomainName] = config;
   await chrome.storage.local.set({ xolverSiteConfigs: configs });
-  showSystemMsg(currentDomainName + ' settings saved ✓');
+  showSystemMsg(t('settingsSaved', currentDomainName));
 });
 
 document.getElementById('deleteSiteConfig').addEventListener('click', async () => {
@@ -253,7 +406,7 @@ document.getElementById('deleteSiteConfig').addEventListener('click', async () =
   document.getElementById('questionSelector').value = '';
   document.getElementById('optionSelector').value = '';
   document.getElementById('optionInputSelector').value = '';
-  showSystemMsg(currentDomainName + ' settings deleted');
+  showSystemMsg(t('settingsDeleted', currentDomainName));
 });
 
 // ===================== CLEAR CHAT =====================
@@ -264,7 +417,7 @@ document.getElementById('clearChatBtn').addEventListener('click', async () => {
   chatMessages.innerHTML = `
     <div class="welcome-message">
       <div class="welcome-icon">🎯</div>
-      <p>Xolver is ready to solve!</p>
+      <p>${t('welcomeText')}</p>
     </div>`;
 });
 
@@ -277,12 +430,7 @@ selectElementBtn.addEventListener('click', async () => {
   if (isSelectingMode) {
     isSelectingMode = false;
     selectElementBtn.classList.remove('active');
-    selectElementBtn.innerHTML = `
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/>
-        <path d="M13 13l6 6"/>
-      </svg>
-      Select Element`;
+    selectElementBtn.innerHTML = `${SVG_CURSOR} ${t('selectElement')}`;
     chrome.storage.local.remove('xolverSelectorActive');
     if (lastSelectorTabId) {
       chrome.tabs.sendMessage(lastSelectorTabId, { action: 'stopSelector' }).catch(() => {});
@@ -352,11 +500,7 @@ autoSolveBtn.addEventListener('click', async () => {
     isAutoSolving = false;
     isLoading = false;
     autoSolveBtn.classList.remove('active');
-    autoSolveBtn.innerHTML = `
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-      </svg>
-      Auto Solve`;
+    autoSolveBtn.innerHTML = `${SVG_BOLT} ${t('autoSolve')}`;
     renderChatFromStorage();
     return;
   }
@@ -389,11 +533,7 @@ autoSolveBtn.addEventListener('click', async () => {
   // Tell content script to auto-detect and solve questions
   isAutoSolving = true;
   autoSolveBtn.classList.add('active');
-  autoSolveBtn.innerHTML = `
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M18 6L6 18"/><path d="M6 6l12 12"/>
-    </svg>
-    Cancel`;
+  autoSolveBtn.innerHTML = `${SVG_CANCEL} ${t('cancel')}`;
 
   // Add "Auto Solve" banner to chat via background storage
   chrome.runtime.sendMessage({ action: 'autoSolveStart' });
@@ -410,11 +550,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       isAutoSolving = false;
       isLoading = false;
       autoSolveBtn.classList.remove('active');
-      autoSolveBtn.innerHTML = `
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-        </svg>
-        Auto Solve`;
+      autoSolveBtn.innerHTML = `${SVG_BOLT} ${t('autoSolve')}`;
       renderChatFromStorage();
     }
   }
@@ -471,12 +607,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     lastSelectorTabId = null;
     chrome.storage.local.remove('xolverSelectorActive');
     selectElementBtn.classList.remove('active');
-    selectElementBtn.innerHTML = `
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/>
-        <path d="M13 13l6 6"/>
-      </svg>
-      Select Element`;
+    selectElementBtn.innerHTML = `${SVG_CURSOR} ${t('selectElement')}`;
 
     // Also refresh preview if there's a new selection
     if (!isLoading) {
@@ -509,7 +640,7 @@ async function renderChatFromStorage() {
     chatMessages.innerHTML = `
       <div class="welcome-message">
         <div class="welcome-icon">🎯</div>
-        <p>Xolver is ready to solve!</p>
+        <p>${t('welcomeText')}</p>
       </div>`;
     return;
   }

@@ -31,6 +31,91 @@ ABSOLUTE RULES:
 - Write only a single uppercase letter.
 - If it is an open-ended question, write the shortest possible answer.`;
 
+// ===================== TURKISH SYSTEM INSTRUCTIONS =====================
+const SYSTEM_INSTRUCTION_TR = `Sen "Xolver" adl\u0131 bir soru \u00e7\u00f6zme asistan\u0131s\u0131n. Kullan\u0131c\u0131 sana web sayfalar\u0131ndan se\u00e7ti\u011fi HTML elementlerini g\u00f6nderecek. Bu elementler genellikle soru, test sorusu veya problem i\u00e7erir.
+
+G\u00f6revin:
+1. HTML i\u00e7eri\u011fini analiz et ve soruyu/problemi tespit et
+2. Soruyu net ve do\u011fru bir \u015fekilde yan\u0131tla
+3. E\u011fer test sorusuysa, do\u011fru \u015f\u0131kk\u0131 belirt ve nedenini a\u00e7\u0131kla
+4. E\u011fer a\u00e7\u0131k u\u00e7lu bir soruysa, kapsaml\u0131 bir cevap ver
+5. Matematiksel i\u015flemler gerekiyorsa ad\u0131m ad\u0131m \u00e7\u00f6z
+6. Yan\u0131tlar\u0131n\u0131 T\u00fcrk\u00e7e ver
+
+Markdown format\u0131nda yan\u0131tla.`;
+
+const SYSTEM_INSTRUCTION_SHORT_TR = `Sen "Xolver" adl\u0131 bir soru \u00e7\u00f6zme asistan\u0131s\u0131n. Kullan\u0131c\u0131 sana web sayfalar\u0131ndan se\u00e7ti\u011fi HTML elementlerini g\u00f6nderecek.
+
+KURALLAR:
+- SADECE cevab\u0131 ver, a\u00e7\u0131klama yapma.
+- Test sorusuysa sadece do\u011fru \u015f\u0131kk\u0131 yaz (\u00f6rn: "B").
+- A\u00e7\u0131k u\u00e7lu soruysa en k\u0131sa \u015fekilde cevapla.
+- Matematiksel sorularda sadece sonucu yaz.
+- Gereksiz s\u00f6z yazma, do\u011frudan cevap ver.
+- T\u00fcrk\u00e7e yan\u0131tla.`;
+
+const SYSTEM_INSTRUCTION_AUTOSOLVE_TR = `Sen bir soru \u00e7\u00f6zme botusun. Sana HTML format\u0131nda bir soru g\u00f6nderilecek.
+
+MUTLAK KURALLAR:
+- SADECE do\u011fru \u015f\u0131kk\u0131n harfini yaz. \u00d6rnek: A veya B veya C veya D
+- Ba\u015fka H\u0130\u00c7B\u0130R \u015eEY yazma. A\u00e7\u0131klama yapma, nokta koyma, c\u00fcmle yazma.
+- Sadece tek bir b\u00fcy\u00fck harf yaz.
+- E\u011fer a\u00e7\u0131k u\u00e7lu bir soruysa en k\u0131sa cevab\u0131 yaz.`;
+
+// ===================== BACKGROUND STRINGS =====================
+const BG_STRINGS = {
+  en: {
+    noApiKey:          '\u274c Please enter your Gemini API key in Settings first.',
+    noApiKeyAutosolve: '\u274c API key not found!',
+    analyzing:         '\ud83d\udccc Analyzing...',
+    addMsg:            "User's additional message: ",
+    noResponse:        'No response received.',
+    apiError:          (msg)          => `\u274c Error: ${msg}`,
+    connectionError:   (msg)          => `\u274c Connection error: ${msg}`,
+    autoSolveBanner:   '\u26a1 Auto Solve',
+    autoSolveCancelled:'\u26d4 Auto solve cancelled',
+    noQuestionsFound:  '\u274c No questions found on page',
+    autoSolveComplete: (s, f)         => f > 0
+      ? `\u26a1 Auto solve complete<br>\u2705 ${s} solved, \u274c ${f} failed`
+      : `\u2705 Auto solve complete \u2014 ${s} question(s) solved`,
+    quotaWait:         (idx, secs)    => `\u23f3 Question ${idx}: Quota exceeded, waiting ${secs}s...`,
+    quotaError:        (idx)          => `\u274c Question ${idx}: Quota error \u2014 could not solve`,
+    questionError:     (idx, msg)     => `\u274c Question ${idx}: ${msg}`,
+    questionAnswer:    (idx, ans)     => `\u26a1 Question ${idx}: **${ans}**`,
+    questionConnError: (idx, msg)     => `\u274c Question ${idx}: Connection error \u2014 ${msg}`,
+    htmlPrompt:        (html)         => `The following HTML element was selected from a web page. It may contain a question or quiz question. Please analyze the content and answer the question. Give the answer directly.\n\n\`\`\`html\n${html}\n\`\`\``,
+    autoSolvePrompt:   (html)         => `This HTML contains an exam/quiz question. State the letter of the correct answer:\n\n\`\`\`html\n${html}\n\`\`\``,
+  },
+  tr: {
+    noApiKey:          "\u274c L\u00fctfen \u00f6nce Ayarlar'dan Gemini API anahtar\u0131n\u0131z\u0131 girin.",
+    noApiKeyAutosolve: '\u274c API anahtar\u0131 bulunamad\u0131!',
+    analyzing:         '\ud83d\udccc Analiz ediliyor...',
+    addMsg:            'Kullan\u0131c\u0131n\u0131n ek mesaj\u0131: ',
+    noResponse:        'Yan\u0131t al\u0131namad\u0131.',
+    apiError:          (msg)          => `\u274c Hata: ${msg}`,
+    connectionError:   (msg)          => `\u274c Ba\u011flant\u0131 hatas\u0131: ${msg}`,
+    autoSolveBanner:   '\u26a1 Otomatik \u00c7\u00f6z\u00fcm',
+    autoSolveCancelled:'\u26d4 Otomatik \u00e7\u00f6z\u00fcm iptal edildi',
+    noQuestionsFound:  '\u274c Sayfada soru bulunamad\u0131',
+    autoSolveComplete: (s, f)         => f > 0
+      ? `\u26a1 Otomatik \u00e7\u00f6z\u00fcm tamamland\u0131<br>\u2705 ${s} \u00e7\u00f6z\u00fcld\u00fc, \u274c ${f} ba\u015far\u0131s\u0131z`
+      : `\u2705 Otomatik \u00e7\u00f6z\u00fcm tamamland\u0131 \u2014 ${s} soru \u00e7\u00f6z\u00fcld\u00fc`,
+    quotaWait:         (idx, secs)    => `\u23f3 Soru ${idx}: Kota a\u015f\u0131ld\u0131, ${secs}sn bekleniyor...`,
+    quotaError:        (idx)          => `\u274c Soru ${idx}: Kota hatas\u0131 \u2014 \u00e7\u00f6z\u00fclemedi`,
+    questionError:     (idx, msg)     => `\u274c Soru ${idx}: ${msg}`,
+    questionAnswer:    (idx, ans)     => `\u26a1 Soru ${idx}: **${ans}**`,
+    questionConnError: (idx, msg)     => `\u274c Soru ${idx}: Ba\u011flant\u0131 hatas\u0131 \u2014 ${msg}`,
+    htmlPrompt:        (html)         => `A\u015fa\u011f\u0131daki HTML elementi bir web sayfas\u0131ndan se\u00e7ildi. Bu bir soru veya test sorusu olabilir. L\u00fctfen i\u00e7eri\u011fi analiz et ve soruyu yan\u0131tla. Cevab\u0131 do\u011frudan ver.\n\n\`\`\`html\n${html}\n\`\`\``,
+    autoSolvePrompt:   (html)         => `Bu HTML bir s\u0131nav/test sorusudur. Do\u011fru cevab\u0131n \u015f\u0131kk\u0131n\u0131 (harfini) s\u00f6yle:\n\n\`\`\`html\n${html}\n\`\`\``,
+  }
+};
+
+function bgt(lang, key, ...args) {
+  const dict = BG_STRINGS[lang] || BG_STRINGS.en;
+  const str  = dict[key] != null ? dict[key] : BG_STRINGS.en[key];
+  return typeof str === 'function' ? str(...args) : str;
+}
+
 // ===================== STORAGE HELPERS =====================
 async function getChatMessages() {
   const data = await chrome.storage.local.get('xolverChatMessages');
@@ -52,13 +137,14 @@ async function saveApiHistory(history) {
 
 // ===================== GEMINI API =====================
 async function callGemini(html, userText) {
-  const data = await chrome.storage.local.get(['geminiApiKey', 'geminiModel', 'xolverShortAnswer']);
+  const data = await chrome.storage.local.get(['geminiApiKey', 'geminiModel', 'xolverShortAnswer', 'xolverLanguage']);
   const apiKey = data.geminiApiKey;
-  const model = data.geminiModel || 'gemini-2.5-flash';
+  const model  = data.geminiModel || 'gemini-2.5-flash';
+  const lang   = data.xolverLanguage || 'en';
 
   if (!apiKey) {
     const msgs = await getChatMessages();
-    msgs.push({ role: 'system', text: '❌ Please enter your Gemini API key in Settings first.' });
+    msgs.push({ role: 'system', text: bgt(lang, 'noApiKey') });
     await saveChatMessages(msgs);
     chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
     return;
@@ -67,15 +153,15 @@ async function callGemini(html, userText) {
   // Build user message for API
   let apiMsg = '';
   if (html) {
-    apiMsg += `The following HTML element was selected from a web page. It may contain a question or quiz question. Please analyze the content and answer the question. Give the answer directly.\n\n\`\`\`html\n${html}\n\`\`\``;
+    apiMsg += bgt(lang, 'htmlPrompt', html);
   }
   if (userText) {
-    apiMsg += (html ? '\n\nUser\'s additional message: ' : '') + userText;
+    apiMsg += (html ? '\n\n' + bgt(lang, 'addMsg') : '') + userText;
   }
 
   // Build display message for UI
   const displayMsg = html
-    ? '📌 Analyzing...' + (userText ? '\n' + userText : '')
+    ? bgt(lang, 'analyzing') + (userText ? '\n' + userText : '')
     : userText;
 
   // Save user message to chat
@@ -91,6 +177,11 @@ async function callGemini(html, userText) {
   // Notify popup that a new user message was added + loading started
   chrome.runtime.sendMessage({ action: 'chatUpdated', loading: true }).catch(() => {});
 
+  // Choose system instruction based on language and short-answer mode
+  const sysInstruction = data.xolverShortAnswer
+    ? (lang === 'tr' ? SYSTEM_INSTRUCTION_SHORT_TR : SYSTEM_INSTRUCTION_SHORT)
+    : (lang === 'tr' ? SYSTEM_INSTRUCTION_TR       : SYSTEM_INSTRUCTION);
+
   try {
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
@@ -98,7 +189,7 @@ async function callGemini(html, userText) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          system_instruction: { parts: [{ text: data.xolverShortAnswer ? SYSTEM_INSTRUCTION_SHORT : SYSTEM_INSTRUCTION }] },
+          system_instruction: { parts: [{ text: sysInstruction }] },
           contents: apiHistory,
           generationConfig: {
             temperature: 0.7,
@@ -118,7 +209,7 @@ async function callGemini(html, userText) {
 
       // Add error to chat
       const msgs = await getChatMessages();
-      msgs.push({ role: 'ai', text: `❌ Hata: ${errMsg}` });
+      msgs.push({ role: 'ai', text: bgt(lang, 'apiError', errMsg) });
       await saveChatMessages(msgs);
 
       chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
@@ -126,7 +217,7 @@ async function callGemini(html, userText) {
     }
 
     const result = await response.json();
-    const aiText = result.candidates?.[0]?.content?.parts?.[0]?.text || 'No response received.';
+    const aiText = result.candidates?.[0]?.content?.parts?.[0]?.text || bgt(lang, 'noResponse');
 
     // Save AI response to API history
     apiHistory.push({ role: 'model', parts: [{ text: aiText }] });
@@ -147,7 +238,7 @@ async function callGemini(html, userText) {
     await saveApiHistory(apiHistory);
 
     const msgs = await getChatMessages();
-    msgs.push({ role: 'ai', text: `❌ Connection error: ${err.message}` });
+    msgs.push({ role: 'ai', text: bgt(lang, 'connectionError', err.message) });
     await saveChatMessages(msgs);
 
     chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
@@ -222,8 +313,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     // Add "Auto Solve" banner to chat (don't set loading:true here to avoid race with noQuestions)
     autoSolveActive = false;  // Reset for new auto-solve session
     (async () => {
+      const langData = await chrome.storage.local.get('xolverLanguage');
+      const lang = langData.xolverLanguage || 'en';
       const msgs = await getChatMessages();
-      msgs.push({ role: 'autosolve-banner', text: '⚡ Auto Solve' });
+      msgs.push({ role: 'autosolve-banner', text: bgt(lang, 'autoSolveBanner') });
       await saveChatMessages(msgs);
       chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
     })();
@@ -252,8 +345,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     console.log('[Xolver BG] Auto-solve cancelled by user');
     autoSolveCancelled = true;
     (async () => {
+      const langData = await chrome.storage.local.get('xolverLanguage');
+      const lang = langData.xolverLanguage || 'en';
       const msgs = await getChatMessages();
-      msgs.push({ role: 'autosolve-banner', text: '⛔ Auto solve cancelled' });
+      msgs.push({ role: 'autosolve-banner', text: bgt(lang, 'autoSolveCancelled') });
       await saveChatMessages(msgs);
       chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
     })();
@@ -266,8 +361,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       return;
     }
     (async () => {
+      const langData = await chrome.storage.local.get('xolverLanguage');
+      const lang = langData.xolverLanguage || 'en';
       const msgs = await getChatMessages();
-      msgs.push({ role: 'autosolve-banner', text: '❌ No questions found on page' });
+      msgs.push({ role: 'autosolve-banner', text: bgt(lang, 'noQuestionsFound') });
       await saveChatMessages(msgs);
       chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
     })();
@@ -281,14 +378,15 @@ let autoSolveCancelled = false;
 let autoSolveActive = false;  // true when questions were found and processing started
 
 async function processAutoSolveQueue(questions, totalQuestions, tabId) {
-  const data = await chrome.storage.local.get(['geminiApiKey', 'geminiModel']);
+  const data = await chrome.storage.local.get(['geminiApiKey', 'geminiModel', 'xolverLanguage']);
   const apiKey = data.geminiApiKey;
-  const model = data.geminiModel || 'gemini-2.5-flash';
+  const model  = data.geminiModel || 'gemini-2.5-flash';
+  const lang   = data.xolverLanguage || 'en';
 
   if (!apiKey) {
     console.log('[Xolver BG] No API key!');
     const msgs = await getChatMessages();
-    msgs.push({ role: 'system', text: '❌ API key not found!' });
+    msgs.push({ role: 'system', text: bgt(lang, 'noApiKeyAutosolve') });
     await saveChatMessages(msgs);
     chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
     chrome.runtime.sendMessage({ action: 'autoSolveStatus', status: 'done', solved: 0 }).catch(() => {});
@@ -309,7 +407,7 @@ async function processAutoSolveQueue(questions, totalQuestions, tabId) {
     const q = questions[i];
     console.log('[Xolver BG] Processing question', q.questionIndex + 1, '/', totalQuestions);
 
-    const success = await solveOneQuestion(q.html, q.questionIndex, tabId, apiKey, model);
+    const success = await solveOneQuestion(q.html, q.questionIndex, tabId, apiKey, model, lang);
     if (success) {
       solvedCount++;
     } else {
@@ -337,11 +435,7 @@ async function processAutoSolveQueue(questions, totalQuestions, tabId) {
 
   // Add completion summary to chat
   const finalMsgs = await getChatMessages();
-  if (failedCount > 0) {
-    finalMsgs.push({ role: 'autosolve-banner', text: '⚡ Auto solve complete<br>✅ ' + solvedCount + ' solved, ❌ ' + failedCount + ' failed' });
-  } else {
-    finalMsgs.push({ role: 'autosolve-banner', text: '✅ Auto solve complete — ' + solvedCount + ' question(s) solved' });
-  }
+  finalMsgs.push({ role: 'autosolve-banner', text: bgt(lang, 'autoSolveComplete', solvedCount, failedCount) });
   await saveChatMessages(finalMsgs);
   chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
 
@@ -354,8 +448,9 @@ async function processAutoSolveQueue(questions, totalQuestions, tabId) {
   focusXolverWindow();
 }
 
-async function solveOneQuestion(html, questionIndex, tabId, apiKey, model) {
-  const apiMsg = `This HTML contains an exam/quiz question. State the letter of the correct answer:\n\n\`\`\`html\n${html}\n\`\`\``;
+async function solveOneQuestion(html, questionIndex, tabId, apiKey, model, lang = 'en') {
+  const apiMsg = bgt(lang, 'autoSolvePrompt', html);
+  const sysInstruction = lang === 'tr' ? SYSTEM_INSTRUCTION_AUTOSOLVE_TR : SYSTEM_INSTRUCTION_AUTOSOLVE;
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     // Check cancellation before each attempt
@@ -373,7 +468,7 @@ async function solveOneQuestion(html, questionIndex, tabId, apiKey, model) {
           headers: { 'Content-Type': 'application/json' },
           signal: controller.signal,
           body: JSON.stringify({
-            system_instruction: { parts: [{ text: SYSTEM_INSTRUCTION_AUTOSOLVE }] },
+            system_instruction: { parts: [{ text: sysInstruction }] },
             contents: [{ role: 'user', parts: [{ text: apiMsg }] }],
             generationConfig: {
               temperature: 0.2,
@@ -397,7 +492,7 @@ async function solveOneQuestion(html, questionIndex, tabId, apiKey, model) {
           }
 
           const msgs = await getChatMessages();
-          msgs.push({ role: 'system', text: `⏳ Question ${questionIndex + 1}: Quota exceeded, waiting ${Math.ceil(waitTime / 1000)}s...` });
+          msgs.push({ role: 'system', text: bgt(lang, 'quotaWait', questionIndex + 1, Math.ceil(waitTime / 1000)) });
           await saveChatMessages(msgs);
           chrome.runtime.sendMessage({ action: 'chatUpdated', loading: true }).catch(() => {});
 
@@ -410,7 +505,7 @@ async function solveOneQuestion(html, questionIndex, tabId, apiKey, model) {
           continue;
         } else {
           const msgs = await getChatMessages();
-          msgs.push({ role: 'ai', text: `❌ Question ${questionIndex + 1}: Quota error — could not solve` });
+          msgs.push({ role: 'ai', text: bgt(lang, 'quotaError', questionIndex + 1) });
           await saveChatMessages(msgs);
           chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
           return false;
@@ -429,7 +524,7 @@ async function solveOneQuestion(html, questionIndex, tabId, apiKey, model) {
         } catch(e) {}
 
         const msgs = await getChatMessages();
-        msgs.push({ role: 'ai', text: `❌ Question ${questionIndex + 1}: ${errMsg}` });
+        msgs.push({ role: 'ai', text: bgt(lang, 'questionError', questionIndex + 1, errMsg) });
         await saveChatMessages(msgs);
         chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
         return false;
@@ -456,7 +551,7 @@ async function solveOneQuestion(html, questionIndex, tabId, apiKey, model) {
 
       // Add to chat
       const msgs = await getChatMessages();
-      msgs.push({ role: 'ai', text: `⚡ Question ${questionIndex + 1}: **${answer.trim()}**` });
+      msgs.push({ role: 'ai', text: bgt(lang, 'questionAnswer', questionIndex + 1, answer.trim()) });
       await saveChatMessages(msgs);
       chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
       return true;
@@ -466,7 +561,7 @@ async function solveOneQuestion(html, questionIndex, tabId, apiKey, model) {
 
       if (attempt >= MAX_RETRIES) {
         const msgs = await getChatMessages();
-        msgs.push({ role: 'ai', text: `❌ Question ${questionIndex + 1}: Connection error — ${err.message}` });
+        msgs.push({ role: 'ai', text: bgt(lang, 'questionConnError', questionIndex + 1, err.message) });
         await saveChatMessages(msgs);
         chrome.runtime.sendMessage({ action: 'chatUpdated', loading: false }).catch(() => {});
         return false;

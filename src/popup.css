@@ -156,7 +156,8 @@ body.popup-mode {
   text-decoration: underline;
 }
 
-#modelSelect {
+#modelSelect,
+#languageSelect {
   width: 100%;
   padding: 8px 36px 8px 12px;
   border-radius: 8px;
@@ -171,7 +172,8 @@ body.popup-mode {
   -webkit-appearance: none;
 }
 
-#modelSelect:focus {
+#modelSelect:focus,
+#languageSelect:focus {
   border-color: #8b5cf6;
 }
 

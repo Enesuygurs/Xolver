@@ -51,7 +51,7 @@
           <input type="password" id="apiKeyInput" placeholder="Enter your API key..." />
           <button id="saveApiKey" class="btn-save">Save</button>
         </div>
-        <p class="api-hint">
+        <p id="apiHint" class="api-hint">
           You can get an API key from <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a>.
         </p>
         <label for="modelSelect" style="margin-top: 10px;">Model</label>
@@ -62,11 +62,16 @@
           <option value="gemini-3.0-pro">Gemini 3 Pro</option>
           <option value="gemini-3.1-pro">Gemini 3.1 Pro</option>
         </select>
-        <label style="margin-top: 14px;">Preferences</label>
+        <label id="languageLabel" for="languageSelect" style="margin-top: 10px;">Language</label>
+        <select id="languageSelect">
+          <option value="en">English</option>
+          <option value="tr">Türkçe</option>
+        </select>
+        <label id="preferencesLabel" style="margin-top: 14px;">Preferences</label>
         <div class="toggle-row" style="margin-top: 8px;">
           <div class="toggle-row-content">
-            <label for="shortAnswerToggle" class="toggle-label">Short Answer Mode</label>
-            <p class="toggle-hint">Returns only the correct answer without explanation</p>
+            <label id="shortAnswerLabel" for="shortAnswerToggle" class="toggle-label">Short Answer Mode</label>
+            <p id="shortAnswerHint" class="toggle-hint">Returns only the correct answer without explanation</p>
           </div>
           <label class="toggle-switch">
             <input type="checkbox" id="shortAnswerToggle" />
@@ -75,8 +80,8 @@
         </div>
         <div class="toggle-row" style="margin-top: 8px;">
           <div class="toggle-row-content">
-            <label for="freeApiToggle" class="toggle-label">Free API Mode</label>
-            <p class="toggle-hint">Adds delays between requests to avoid quota errors</p>
+            <label id="freeApiLabel" for="freeApiToggle" class="toggle-label">Free API Mode</label>
+            <p id="freeApiHint" class="toggle-hint">Adds delays between requests to avoid quota errors</p>
           </div>
           <label class="toggle-switch">
             <input type="checkbox" id="freeApiToggle" checked />
@@ -90,10 +95,10 @@
     <div id="siteConfigPanel" class="settings-panel hidden">
       <div class="settings-content">
         <div class="site-config-header">
-          <label>Site Settings</label>
+          <label id="siteSettingsLabel">Site Settings</label>
           <span id="currentDomain" class="current-domain">—</span>
         </div>
-        <p class="site-config-hint">Define custom CSS selectors for the current site. If left empty, default Moodle selectors will be used.</p>
+        <p id="siteConfigHint" class="site-config-hint">Define custom CSS selectors for the current site. If left empty, default Moodle selectors will be used.</p>
         <div class="selector-field">
           <input type="text" id="questionSelector" placeholder="Question container — e.g., .mcq__inner" />
         </div>
