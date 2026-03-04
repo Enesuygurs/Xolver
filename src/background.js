@@ -416,7 +416,7 @@ async function processAutoSolveQueue(questions, totalQuestions, tabId) {
     // Pace requests based on free API mode setting
     if (i < questions.length - 1) {
       const settings = await chrome.storage.local.get('xolverFreeApi');
-      const isFreeApi = settings.xolverFreeApi !== false; // default true
+      const isFreeApi = !!settings.xolverFreeApi; // default false
       const delay = isFreeApi ? 13000 : 1000;
       console.log('[Xolver BG] Waiting', delay, 'ms before next question (freeApi:', isFreeApi, ')');
       // Wait in 1s chunks so cancellation is responsive

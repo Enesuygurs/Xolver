@@ -176,8 +176,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     modelSelect.value = data.geminiModel;
   }
   document.getElementById('shortAnswerToggle').checked = !!data.xolverShortAnswer;
-  // Free API mode defaults to true if not set
-  document.getElementById('freeApiToggle').checked = data.xolverFreeApi !== false;
+  document.getElementById('freeApiToggle').checked = !!data.xolverFreeApi;
 
   // Apply saved language (defaults to English)
   currentLang = data.xolverLanguage || 'en';
