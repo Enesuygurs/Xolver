@@ -412,6 +412,14 @@ body.popup-mode {
   font-weight: 600;
   color: #8b5cf6;
   font-family: 'Consolas', 'Fira Code', monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.preview-header .icon-btn-small {
+  flex-shrink: 0;
 }
 
 .icon-btn-small {
